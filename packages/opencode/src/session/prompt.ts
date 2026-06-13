@@ -1151,12 +1151,15 @@ export const layer = Layer.effect(
       const active = yield* goalSvc.get(input.sessionID)
       if (!active) return true
 
+      const cfg = yield* config.get()
+      const maxReact = cfg.goal?.maxReact ?? MAX_GOAL_REACT
+
       let verdict: Goal.Verdict
       try {
         verdict = yield* goalSvc.evaluate({
           condition: active.condition,
           msgs: input.msgs,
-          model: input.model,
+          model: cfg.goal?.judgeModel ?? input.model,
         })
       } catch (e) {
         yield* Effect.logWarning("goal judge error, failing open", { error: String(e) })
@@ -1183,7 +1186,7 @@ export const layer = Layer.effect(
       }
 
       const react = yield* goalSvc.bumpReact(input.sessionID)
-      if (react > MAX_GOAL_REACT) {
+      if (react > maxReact) {
         yield* Effect.logWarning("goal react cap reached, releasing", {
           "session.id": input.sessionID,
           react,

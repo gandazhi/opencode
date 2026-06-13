@@ -16,6 +16,8 @@ import { ConfigPluginV1 } from "./plugin"
 import { ConfigProviderV1 } from "./provider"
 import { ConfigServerV1 } from "./server"
 import { ConfigSkillsV1 } from "./skills"
+import { ProviderV2 } from "../../provider"
+import { ModelV2 } from "../../model"
 
 export type Layout = ConfigLayoutV1.Layout
 
@@ -88,12 +90,8 @@ export const Info = Schema.Struct({
     Schema.Struct({
       judgeModel: Schema.optional(
         Schema.Struct({
-          providerID: Schema.String.annotate({
-            description: "Judge model provider, e.g. 'anthropic'",
-          }),
-          modelID: Schema.String.annotate({
-            description: "Judge model ID, e.g. 'claude-haiku-4-20250414'",
-          }),
+          providerID: ProviderV2.ID,
+          modelID: ModelV2.ID,
         }),
       ).annotate({
         description:
