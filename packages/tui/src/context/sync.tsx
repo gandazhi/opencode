@@ -85,6 +85,21 @@ export const {
       todo: {
         [sessionID: string]: Todo[]
       }
+      goal: {
+        [sessionID: string]: {
+          condition?: string
+          verdicts: {
+            [messageID: string]: {
+              ok: boolean
+              impossible?: boolean
+              reason: string
+              attempt: number
+              error?: boolean
+            }
+          }
+          lastMessageID?: string
+        }
+      }
       message: {
         [sessionID: string]: Message[]
       }
@@ -120,6 +135,7 @@ export const {
       session_status: {},
       session_diff: {},
       todo: {},
+      goal: {},
       message: {},
       part: {},
       lsp: [],
@@ -242,6 +258,29 @@ export const {
         case "todo.updated":
           setStore("todo", event.properties.sessionID, event.properties.todos)
           break
+
+        case "session.goal": {
+          const { sessionID: sid, goal: goalData, lastVerdict } = event.properties
+          setStore("goal", sid, (prev) => {
+            const base = prev ?? { condition: undefined, verdicts: {}, lastMessageID: undefined }
+            const verdicts = { ...base.verdicts }
+            if (lastVerdict?.messageID) {
+              verdicts[lastVerdict.messageID] = {
+                ok: lastVerdict.ok,
+                impossible: lastVerdict.impossible,
+                reason: lastVerdict.reason,
+                attempt: Number(lastVerdict.attempt),
+                error: lastVerdict.error,
+              }
+            }
+            return {
+              condition: goalData?.condition,
+              verdicts,
+              lastMessageID: lastVerdict?.messageID ?? base.lastMessageID,
+            }
+          })
+          break
+        }
 
         case "session.diff":
           setStore("session_diff", event.properties.sessionID, event.properties.diff)

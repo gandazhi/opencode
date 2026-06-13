@@ -16,6 +16,8 @@ import { ConfigPluginV1 } from "./plugin"
 import { ConfigProviderV1 } from "./provider"
 import { ConfigServerV1 } from "./server"
 import { ConfigSkillsV1 } from "./skills"
+import { ProviderV2 } from "../../provider"
+import { ModelV2 } from "../../model"
 
 export type Layout = ConfigLayoutV1.Layout
 
@@ -84,6 +86,22 @@ export const Info = Schema.Struct({
   username: Schema.optional(Schema.String).annotate({
     description: "Custom username to display in conversations instead of system username",
   }),
+  goal: Schema.optional(
+    Schema.Struct({
+      judgeModel: Schema.optional(
+        Schema.Struct({
+          providerID: ProviderV2.ID,
+          modelID: ModelV2.ID,
+        }),
+      ).annotate({
+        description:
+          "Independent model for goal judgment. Falls back to session model if not set.",
+      }),
+      maxReact: Schema.optional(Schema.Number).annotate({
+        description: "Max judge-driven re-entries before releasing (default: 12)",
+      }),
+    }),
+  ).annotate({ description: "Goal stop-condition configuration" }),
   mode: Schema.optional(
     Schema.StructWithRest(
       Schema.Struct({ build: Schema.optional(ConfigAgentV1.Info), plan: Schema.optional(ConfigAgentV1.Info) }),

@@ -54,6 +54,7 @@ export function hints(template: string) {
 export const Default = {
   INIT: "init",
   REVIEW: "review",
+  GOAL: "goal",
 } as const
 
 export interface Interface {

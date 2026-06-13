@@ -84,6 +84,7 @@ export type Event =
   | EventSessionStatus
   | EventSessionIdle
   | EventSessionCompacted
+  | EventSessionGoal
   | EventWorktreeReady
   | EventWorktreeFailed
   | EventWorkspaceReady
@@ -723,6 +724,10 @@ export type SessionStatus =
   | {
       type: "busy"
     }
+
+export type SessionGoal = {
+  condition: string
+}
 
 export type GlobalEvent = {
   directory: string
@@ -1574,6 +1579,22 @@ export type GlobalEvent = {
       }
     | {
         id: string
+        type: "session.goal"
+        properties: {
+          sessionID: string
+          goal?: SessionGoal
+          lastVerdict?: {
+            ok: boolean
+            impossible?: boolean
+            reason: string
+            attempt: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+            messageID?: string
+            error?: boolean
+          }
+        }
+      }
+    | {
+        id: string
         type: "worktree.ready"
         properties: {
           name: string
@@ -1951,6 +1972,16 @@ export type Config = {
   small_model?: string
   default_agent?: string
   username?: string
+  goal?: {
+    judgeModel?: {
+      providerID: string
+      modelID: string
+    }
+    /**
+     * Max judge-driven re-entries before releasing (default: 12)
+     */
+    maxReact?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+  }
   mode?: {
     build?: AgentConfig
     plan?: AgentConfig
@@ -5186,6 +5217,23 @@ export type EventSessionCompacted = {
   type: "session.compacted"
   properties: {
     sessionID: string
+  }
+}
+
+export type EventSessionGoal = {
+  id: string
+  type: "session.goal"
+  properties: {
+    sessionID: string
+    goal?: SessionGoal
+    lastVerdict?: {
+      ok: boolean
+      impossible?: boolean
+      reason: string
+      attempt: number | "NaN" | "Infinity" | "-Infinity"
+      messageID?: string
+      error?: boolean
+    }
   }
 }
 
