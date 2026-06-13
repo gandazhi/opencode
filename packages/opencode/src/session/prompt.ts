@@ -25,6 +25,7 @@ import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
 import * as Stream from "effect/Stream"
 import { Command } from "../command"
+import { Goal } from "./goal"
 import { pathToFileURL, fileURLToPath } from "url"
 import { Config } from "@/config/config"
 import { ConfigMarkdown } from "@/config/markdown"
@@ -77,6 +78,8 @@ IMPORTANT:
 
 const STRUCTURED_OUTPUT_SYSTEM_PROMPT = `IMPORTANT: The user has requested structured output. You MUST use the StructuredOutput tool to provide your final response. Do NOT respond with plain text - you MUST call the StructuredOutput tool with your answer formatted according to the schema.`
 
+const MAX_GOAL_REACT = 12
+
 function isOrphanedInterruptedTool(part: SessionV1.ToolPart) {
   // cleanup() marks abandoned tool_use blocks this way after retries/aborts.
   // They are not pending work and must not trigger an assistant-prefill request.
@@ -122,6 +125,7 @@ export const layer = Layer.effect(
     const sys = yield* SystemPrompt.Service
     const llm = yield* LLM.Service
     const events = yield* EventV2Bridge.Service
+    const goalSvc = yield* Goal.Service
     const flags = yield* RuntimeFlags.Service
     const database = yield* Database.Service
     const { db } = database
@@ -1131,6 +1135,107 @@ export const layer = Layer.effect(
       throw new Error("Impossible")
     })
 
+    const goalGate: (input: {
+      sessionID: SessionID
+      msgs: SessionV1.WithParts[]
+      lastAssistantID: string
+      agent: string
+      model: { providerID: ProviderV2.ID; modelID: ModelV2.ID }
+    }) => Effect.Effect<boolean> = Effect.fn("SessionPrompt.goalGate")(function* (input: {
+      sessionID: SessionID
+      msgs: SessionV1.WithParts[]
+      lastAssistantID: string
+      agent: string
+      model: { providerID: ProviderV2.ID; modelID: ModelV2.ID }
+    }) {
+      const active = yield* goalSvc.get(input.sessionID)
+      if (!active) return true
+
+      let verdict: Goal.Verdict
+      try {
+        verdict = yield* goalSvc.evaluate({
+          condition: active.condition,
+          msgs: input.msgs,
+          model: input.model,
+        })
+      } catch (e) {
+        yield* Effect.logWarning("goal judge error, failing open", { error: String(e) })
+        const attempt = active.react + 1
+        yield* events.publish(Goal.Event.Updated, {
+          sessionID: input.sessionID,
+          goal: undefined,
+          lastVerdict: { ok: false, reason: "judge error", attempt, error: true },
+        })
+        yield* goalSvc.clear(input.sessionID)
+        return true
+      }
+
+      const attempt = active.react + 1
+
+      if (verdict.ok || verdict.impossible) {
+        yield* events.publish(Goal.Event.Updated, {
+          sessionID: input.sessionID,
+          goal: undefined,
+          lastVerdict: { ...verdict, attempt, messageID: input.lastAssistantID },
+        })
+        yield* goalSvc.clear(input.sessionID)
+        return true
+      }
+
+      const react = yield* goalSvc.bumpReact(input.sessionID)
+      if (react > MAX_GOAL_REACT) {
+        yield* Effect.logWarning("goal react cap reached, releasing", {
+          "session.id": input.sessionID,
+          react,
+        })
+        yield* events.publish(Goal.Event.Updated, {
+          sessionID: input.sessionID,
+          goal: undefined,
+          lastVerdict: { ...verdict, attempt, messageID: input.lastAssistantID },
+        })
+        yield* goalSvc.clear(input.sessionID)
+        return true
+      }
+
+      yield* events.publish(Goal.Event.Updated, {
+        sessionID: input.sessionID,
+        goal: { condition: active.condition },
+        lastVerdict: { ...verdict, attempt, messageID: input.lastAssistantID },
+      })
+
+      const messageID = MessageID.ascending()
+      const info: SessionV1.User = {
+        id: messageID,
+        role: "user",
+        sessionID: input.sessionID,
+        time: { created: Date.now() },
+        agent: input.agent,
+        model: {
+          providerID: input.model.providerID,
+          modelID: input.model.modelID,
+        },
+      }
+      const part: SessionV1.TextPart = {
+        id: PartID.ascending(),
+        messageID,
+        sessionID: input.sessionID,
+        type: "text",
+        synthetic: true,
+        text: [
+          "<system-reminder>",
+          `Your goal is not yet satisfied: "${active.condition}".`,
+          "A judge reviewed the transcript and reported what is still missing:",
+          verdict.reason,
+          "Keep working toward the goal. Do not stop until it is genuinely met or impossible.",
+          "</system-reminder>",
+        ].join("\n"),
+      }
+      yield* sessions.updateMessage(info)
+      yield* sessions.updatePart(part)
+
+      return false
+    })
+
     const runLoop: (sessionID: SessionID) => Effect.Effect<SessionV1.WithParts> = Effect.fn("SessionPrompt.run")(
       function* (sessionID: SessionID) {
         const ctx = yield* InstanceState.context
@@ -1167,6 +1272,15 @@ export const layer = Layer.effect(
             !hasToolCalls &&
             lastUser.id < lastAssistant.id
           ) {
+            const allowStop = yield* goalGate({
+              sessionID,
+              msgs,
+              lastAssistantID: lastAssistant.id,
+              agent: lastUser.agent,
+              model: lastUser.model,
+            })
+            if (!allowStop) continue
+
             const orphan = lastAssistantMsg?.parts.find(
               (part): part is SessionV1.ToolPart => part.type === "tool" && isOrphanedInterruptedTool(part),
             )
@@ -1420,6 +1534,26 @@ export const layer = Layer.effect(
         command: input.command,
         agent: input.agent,
       })
+      if (input.command === Command.Default.GOAL) {
+        const condition = input.arguments.trim()
+        if (condition === "" || condition === "clear" || condition === "reset") {
+          yield* goalSvc.clear(input.sessionID)
+          return yield* prompt({
+            sessionID: input.sessionID,
+            messageID: input.messageID,
+            agent: input.agent,
+            parts: [{ type: "text", text: "Goal cleared.", synthetic: true }],
+            noReply: true,
+          })
+        }
+        yield* goalSvc.set(input.sessionID, condition)
+        return yield* prompt({
+          sessionID: input.sessionID,
+          messageID: input.messageID,
+          agent: input.agent,
+          parts: [{ type: "text", text: condition }],
+        })
+      }
       const cmd = yield* commands.get(input.command)
       if (!cmd) {
         const available = (yield* commands.list()).map((c) => c.name)
@@ -1576,6 +1710,7 @@ export const defaultLayer = Layer.suspend(() =>
         CrossSpawnSpawner.defaultLayer,
         RuntimeFlags.defaultLayer,
         EventV2Bridge.defaultLayer,
+        Goal.defaultLayer,
       ),
     ),
   ),
@@ -1693,6 +1828,7 @@ export const node = LayerNode.make(layer, [
   SessionCompaction.node,
   Plugin.node,
   Command.node,
+  Goal.node,
   Config.node,
   Permission.node,
   FSUtil.node,
