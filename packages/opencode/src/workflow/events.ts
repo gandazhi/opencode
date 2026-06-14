@@ -40,7 +40,7 @@ export const WorkflowFinished = EventV2.define({
   schema: {
     sessionID: SessionID,
     runID: Schema.String,
-    status: Schema.Literal("completed", "failed", "cancelled"),
+    status: Schema.Literals(["completed", "failed", "cancelled"]),
     error: Schema.optional(Schema.String),
   },
 })
@@ -54,7 +54,7 @@ export const WorkflowAgentFailed = EventV2.define({
     agentType: Schema.String,
     label: Schema.optional(Schema.String),
     phase: Schema.optional(Schema.String),
-    reason: Schema.Literal("over-cap", "spawn-reject", "timeout", "actor-error", "no-deliverable"),
+    reason: Schema.Literals(["over-cap", "spawn-reject", "timeout", "actor-error", "no-deliverable"]),
     errorMessage: Schema.optional(Schema.String),
   },
 })
@@ -66,7 +66,7 @@ export const WorkflowChildFailed = EventV2.define({
     runID: Schema.String,
     childRunID: Schema.String,
     name: Schema.String,
-    status: Schema.Literal("failed", "cancelled"),
+    status: Schema.Literals(["failed", "cancelled"]),
     error: Schema.optional(Schema.String),
   },
 })
