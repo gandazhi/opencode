@@ -37,6 +37,28 @@ const emptyConsoleState: ConsoleState = {
   switchableOrgCount: 0,
 }
 
+export type WorkflowTokens = {
+  input: number
+  output: number
+  reasoning: number
+  cache: { read: number; write: number }
+}
+
+export type WorkflowAgent = {
+  key: string
+  sessionID?: string
+  agentType: string
+  label?: string
+  phase?: string
+  status: "running" | "succeeded" | "failed"
+  reason?: string
+  retry?: number
+  startedAt: number
+  endedAt?: number
+  cost?: number
+  tokens?: WorkflowTokens
+}
+
 export type WorkflowRun = {
   runID: string
   sessionID: string
@@ -47,6 +69,10 @@ export type WorkflowRun = {
   failed: number
   currentPhase?: string
   error?: string
+  logs: string[]
+  agents: WorkflowAgent[]
+  agentCount: number
+  parentActorID?: string
 }
 
 function search<T>(items: T[], target: string, key: (item: T) => string) {
@@ -60,6 +86,12 @@ function search<T>(items: T[], target: string, key: (item: T) => string) {
     else right = middle - 1
   }
   return { found: false, index: left }
+}
+
+function upsertAgent(agents: WorkflowAgent[], agent: Partial<WorkflowAgent> & { key: string }): WorkflowAgent[] {
+  const idx = agents.findIndex((a) => a.key === agent.key)
+  if (idx === -1) return [...agents, agent as WorkflowAgent]
+  return agents.map((a, i) => (i === idx ? { ...a, ...agent } : a))
 }
 
 export const {
@@ -205,6 +237,9 @@ export const {
           failed: prev?.failed ?? 0,
           currentPhase: prev?.currentPhase,
           error: undefined,
+          logs: prev?.logs ?? [],
+          agents: prev?.agents ?? [],
+          agentCount: prev?.agentCount ?? 0,
         }))
         return
       }
@@ -213,12 +248,78 @@ export const {
         setStore("workflow", runID, "currentPhase", title)
         return
       }
+      if (type === "workflow.log") {
+        const { runID, message } = (event as unknown as { properties: { runID: string; message: string } }).properties
+        setStore("workflow", runID, "logs", (prev) => [...(prev ?? []).slice(-9), message])
+        return
+      }
+      if (type === "workflow.progress") {
+        const { runID, running, succeeded, failed } = (event as unknown as {
+          properties: { runID: string; running: number; succeeded: number; failed: number }
+        }).properties
+        setStore("workflow", runID, (prev) =>
+          prev ? { ...prev, running, succeeded, failed } : prev,
+        )
+        return
+      }
       if (type === "workflow.finished") {
         const { runID, status, error } = (event as unknown as {
           properties: { runID: string; status: WorkflowRun["status"]; error?: string }
         }).properties
         setStore("workflow", runID, (prev) =>
           prev ? { ...prev, status, error } : prev,
+        )
+        return
+      }
+      if (type === "workflow.agent_started") {
+        const { runID, key, agentID, agentType, label, phase } = (event as unknown as {
+          properties: { runID: string; key: string; agentID?: string; agentType: string; label?: string; phase?: string }
+        }).properties
+        setStore("workflow", runID, (prev) =>
+          prev
+            ? {
+                ...prev,
+                agents: upsertAgent(prev.agents ?? [], {
+                  key,
+                  sessionID: agentID,
+                  agentType,
+                  label,
+                  phase,
+                  status: "running",
+                  startedAt: Date.now(),
+                }),
+              }
+            : prev,
+        )
+        return
+      }
+      if (type === "workflow.agent_ended") {
+        const { runID, key, status, reason, retry, cost, tokens } = (event as unknown as {
+          properties: {
+            runID: string
+            key: string
+            status: "succeeded" | "failed"
+            reason?: string
+            retry?: number
+            cost?: number
+            tokens?: WorkflowTokens
+          }
+        }).properties
+        setStore("workflow", runID, (prev) =>
+          prev
+            ? {
+                ...prev,
+                agents: upsertAgent(prev.agents ?? [], {
+                  key,
+                  status,
+                  reason,
+                  retry,
+                  endedAt: Date.now(),
+                  ...(cost !== undefined ? { cost } : {}),
+                  ...(tokens ? { tokens } : {}),
+                }),
+              }
+            : prev,
         )
         return
       }
@@ -732,9 +833,51 @@ export const {
           setStore(
             "workflow",
             produce((draft) => {
-              for (const run of runs) draft[run.runID] = run
+              for (const run of runs) {
+                if (!run.agents) run.agents = []
+                if (!run.logs) run.logs = []
+                draft[run.runID] = run
+              }
             }),
           )
+        },
+        async detail(runID: string) {
+          const params = new URLSearchParams()
+          const ws = project.workspace.current()
+          if (ws) params.set("workspace", ws)
+          const query = params.toString()
+          const response = await sdk.fetch(`${sdk.url}/workflow/${runID}${query ? "?" + query : ""}`)
+          if (!response.ok) return
+          const data: { run: WorkflowRun; agents: WorkflowAgent[]; logs: string[] } = await response.json()
+          setStore("workflow", runID, (prev) =>
+            prev
+              ? { ...prev, agents: data.agents, logs: data.logs }
+              : { ...data.run, agents: data.agents, logs: data.logs },
+          )
+        },
+        async cancel(runID: string) {
+          const params = new URLSearchParams()
+          const ws = project.workspace.current()
+          if (ws) params.set("workspace", ws)
+          const query = params.toString()
+          await sdk.fetch(`${sdk.url}/workflow/${runID}/cancel${query ? "?" + query : ""}`, { method: "POST" })
+        },
+        async remove(runID: string) {
+          const params = new URLSearchParams()
+          const ws = project.workspace.current()
+          if (ws) params.set("workspace", ws)
+          const query = params.toString()
+          const response = await sdk.fetch(`${sdk.url}/workflow/${runID}${query ? "?" + query : ""}`, {
+            method: "DELETE",
+          })
+          if (response.ok) {
+            setStore(
+              "workflow",
+              produce((draft) => {
+                delete draft[runID]
+              }),
+            )
+          }
         },
         async resume(runID: string) {
           const params = new URLSearchParams()
