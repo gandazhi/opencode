@@ -5,6 +5,7 @@ import type { InstanceContext } from "@/project/instance-context"
 import { SessionID, MessageID } from "@/session/schema"
 import { Effect, Layer, Context, Schema } from "effect"
 import { Config } from "@/config/config"
+import { RuntimeFlags } from "@/effect/runtime-flags"
 import { MCP } from "../mcp"
 import { Skill } from "../skill"
 import { EventV2 } from "@opencode-ai/core/event"
@@ -55,6 +56,7 @@ export const Default = {
   INIT: "init",
   REVIEW: "review",
   GOAL: "goal",
+  DEEP_RESEARCH: "deep-research",
 } as const
 
 export interface Interface {
@@ -64,12 +66,31 @@ export interface Interface {
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/Command") {}
 
+function deepResearchTemplate(): string {
+  return [
+    "The user wants a deep, multi-source, fact-checked research report.",
+    "",
+    "Research request:",
+    "$ARGUMENTS",
+    "",
+    "If the request is underspecified (missing scope, constraints, region, time range, etc.),",
+    "ask 2-3 brief clarifying questions FIRST, then weave the answers into a refined question.",
+    "",
+    "When the request is specific enough, run the built-in deep-research workflow:",
+    '  workflow({ operation: "run", name: "deep-research", args: "<the refined research question>" })',
+    "",
+    "Pass the full refined question as `args`. The workflow fans out web searches, fetches sources,",
+    "adversarially verifies claims, and returns a cited report; relay its result to the user.",
+  ].join("\n")
+}
+
 export const layer = Layer.effect(
   Service,
   Effect.gen(function* () {
     const config = yield* Config.Service
     const mcp = yield* MCP.Service
     const skill = yield* Skill.Service
+    const flags = yield* RuntimeFlags.Service
 
     const init = Effect.fn("Command.state")(function* (ctx: InstanceContext) {
       const cfg = yield* config.get()
@@ -94,6 +115,19 @@ export const layer = Layer.effect(
         },
         subtask: true,
         hints: hints(PROMPT_REVIEW),
+      }
+
+      if (flags.experimentalDynamicWorkflow) {
+        commands[Default.DEEP_RESEARCH] = {
+          name: Default.DEEP_RESEARCH,
+          description: "run a deep, multi-source, fact-checked research workflow",
+          source: "command",
+          get template() {
+            return deepResearchTemplate()
+          },
+          subtask: true,
+          hints: hints(deepResearchTemplate()),
+        }
       }
 
       for (const [name, command] of Object.entries(cfg.command ?? {})) {
@@ -178,8 +212,9 @@ export const defaultLayer = layer.pipe(
   Layer.provide(Config.defaultLayer),
   Layer.provide(MCP.defaultLayer),
   Layer.provide(Skill.defaultLayer),
+  Layer.provide(RuntimeFlags.defaultLayer),
 )
 
-export const node = LayerNode.make(layer, [Config.node, MCP.node, Skill.node])
+export const node = LayerNode.make(layer, [Config.node, MCP.node, Skill.node, RuntimeFlags.node])
 
 export * as Command from "."
