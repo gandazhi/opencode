@@ -24,7 +24,7 @@ import { makeFileHooks, resolveInWorkspace } from "./workspace"
 import { isInlineScript, resolveWorkflowScript } from "./resolve"
 import { WorkflowAgentEnded, WorkflowAgentFailed, WorkflowAgentStarted, WorkflowChildFailed, WorkflowFinished, WorkflowLog, WorkflowPhase, WorkflowProgress, WorkflowStarted } from "./events"
 import { WorkflowPersistence, journalKeyBase } from "./persistence"
-import type { RunSummary, WorkflowTokens } from "./persistence"
+import type { AgentRecord, RunSummary, WorkflowTokens } from "./persistence"
 
 type ProviderID = ProviderV2.ID
 type ModelID = ModelV2.ID
@@ -164,6 +164,13 @@ export interface Interface {
   readonly cancel: (input: { runID: string }) => Effect.Effect<void>
   readonly list: (input?: { sessionID?: SessionID }) => Effect.Effect<RunSummary[]>
   readonly resume: (input: { runID: string; agentTimeoutMs?: number }) => Effect.Effect<{ runID: string; resumed: boolean }>
+  readonly detail: (input: {
+    runID: string
+  }) => Effect.Effect<
+    | { status: "unknown" }
+    | { run: RunSummary; agents: AgentRecord[]; logs: string[] }
+  >
+  readonly remove: (input: { runID: string }) => Effect.Effect<void>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/WorkflowRuntime") {}
@@ -1025,7 +1032,40 @@ export const layer = Layer.effect(
       )
     })
 
-    const impl = Service.of({ start, status, wait, cancel, list, resume })
+    const detail = Effect.fn("WorkflowRuntime.detail")(function* (input: { runID: string }) {
+      const journal = yield* WorkflowPersistence.loadJournal(input.runID).pipe(
+        Effect.provideService(Database.Service, database),
+      )
+      const summary = yield* WorkflowPersistence.load(input.runID).pipe(
+        Effect.provideService(Database.Service, database),
+      )
+      if (!summary) return { status: "unknown" as const }
+      return { run: summary, agents: journal.agents, logs: journal.logs }
+    })
+
+    const remove = Effect.fn("WorkflowRuntime.remove")(function* (input: { runID: string }) {
+      const live = runs.get(input.runID)
+      if (live && live.status === "running") {
+        return yield* Effect.die(
+          new Error(`${WORKFLOW_STRUCTURAL_ERROR}: cannot remove a running workflow — cancel first`),
+        )
+      }
+      // Cascade child runs
+      if (live) {
+        for (const childRunID of live.childRunIDs) {
+          yield* WorkflowPersistence.remove(childRunID).pipe(
+            Effect.provideService(Database.Service, database),
+            Effect.ignore,
+          )
+        }
+      }
+      yield* WorkflowPersistence.remove(input.runID).pipe(
+        Effect.provideService(Database.Service, database),
+      )
+      runs.delete(input.runID)
+    })
+
+    const impl = Service.of({ start, status, wait, cancel, list, resume, detail, remove })
     // Late-bind the impl so the `workflow` tool can resolve it without forcing a
     // WorkflowRuntime.Service requirement onto ToolRegistry.layer. See
     // runtime-ref.ts for rationale.
