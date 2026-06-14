@@ -29,8 +29,17 @@ import * as OtelTracer from "@effect/opentelemetry/Tracer"
 import { LLMAISDK } from "./llm/ai-sdk"
 import { LLMNativeRuntime } from "./llm/native-runtime"
 import { LLMRequestPrep } from "./llm/request"
+import { withIdleTimeout } from "./llm/idle-timeout"
 
 export const OUTPUT_TOKEN_MAX = ProviderTransform.OUTPUT_TOKEN_MAX
+
+// Per-event idle budget for an LLM stream. A connection that emits nothing
+// (no token, no reasoning delta, no tool event) for this long is treated as a
+// stalled provider connection and the underlying fetch is aborted, terminating
+// the stream instead of hanging up to the workflow script deadline. This is an
+// idle timeout, not a total-time cap: a slow-but-progressing agent re-arms the
+// timer on every event and is never interrupted.
+const STREAM_IDLE_TIMEOUT_MS = 120_000
 
 export type StreamInput = {
   user: SessionV1.User
@@ -365,17 +374,21 @@ const live: Layer.Layer<
 
             const result = yield* run({ ...input, abort: ctrl.signal })
 
-            if (result.type === "native") return result.stream
-
-            // Adapter seam: both runtimes expose the same LLMEvent stream. Native
-            // already returns one; AI SDK streams are converted here.
-            const state = LLMAISDK.adapterState()
-            return Stream.fromAsyncIterable(result.result.fullStream, (e) =>
-              e instanceof Error ? e : new Error(String(e)),
-            ).pipe(
-              Stream.mapEffect((event) => LLMAISDK.toLLMEvents(state, event)),
-              Stream.flatMap((events) => Stream.fromIterable(events)),
-            )
+            let inner: Stream.Stream<LLMEvent, unknown>
+            if (result.type === "native") {
+              inner = result.stream
+            } else {
+              // Adapter seam: both runtimes expose the same LLMEvent stream. Native
+              // already returns one; AI SDK streams are converted here.
+              const state = LLMAISDK.adapterState()
+              inner = Stream.fromAsyncIterable(result.result.fullStream, (e) =>
+                e instanceof Error ? e : new Error(String(e)),
+              ).pipe(
+                Stream.mapEffect((event) => LLMAISDK.toLLMEvents(state, event)),
+                Stream.flatMap((events) => Stream.fromIterable(events)),
+              )
+            }
+            return withIdleTimeout(inner, STREAM_IDLE_TIMEOUT_MS, () => ctrl.abort())
           }),
         ),
       )

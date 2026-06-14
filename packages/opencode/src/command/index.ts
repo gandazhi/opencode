@@ -68,19 +68,17 @@ export class Service extends Context.Service<Service, Interface>()("@opencode/Co
 
 function deepResearchTemplate(): string {
   return [
-    "The user wants a deep, multi-source, fact-checked research report.",
+    "The user requested a deep research report on:",
     "",
-    "Research request:",
     "$ARGUMENTS",
     "",
-    "If the request is underspecified (missing scope, constraints, region, time range, etc.),",
-    "ask 2-3 brief clarifying questions FIRST, then weave the answers into a refined question.",
+    "Call the workflow tool NOW to start the deep-research workflow.",
+    "Use exactly this call — do NOT ask questions, do NOT summarize, do NOT search manually:",
     "",
-    "When the request is specific enough, run the built-in deep-research workflow:",
-    '  workflow({ operation: "run", name: "deep-research", args: "<the refined research question>" })',
+    '  workflow({ operation: "run", name: "deep-research", args: "$ARGUMENTS" })',
     "",
-    "Pass the full refined question as `args`. The workflow fans out web searches, fetches sources,",
-    "adversarially verifies claims, and returns a cited report; relay its result to the user.",
+    "The workflow runs in the background. After calling the tool, tell the user the workflow has started",
+    'and they can check /workflows for progress. When the workflow completes, relay its result.',
   ].join("\n")
 }
 
@@ -117,17 +115,27 @@ export const layer = Layer.effect(
         hints: hints(PROMPT_REVIEW),
       }
 
-      if (flags.experimentalDynamicWorkflow) {
-        commands[Default.DEEP_RESEARCH] = {
-          name: Default.DEEP_RESEARCH,
-          description: "run a deep, multi-source, fact-checked research workflow",
-          source: "command",
-          get template() {
-            return deepResearchTemplate()
-          },
-          subtask: true,
-          hints: hints(deepResearchTemplate()),
-        }
+      const goalTemplate =
+        "Set a persistent stopping condition for this session. The assistant keeps working until the condition is met, then stops automatically.\n\nCondition: $ARGUMENTS\n\nPass empty, \"clear\", or \"reset\" to remove the current goal."
+      commands[Default.GOAL] = {
+        name: Default.GOAL,
+        description: "set or clear a persistent stopping condition for this session",
+        source: "command",
+        get template() {
+          return goalTemplate
+        },
+        hints: hints(goalTemplate),
+      }
+
+      commands[Default.DEEP_RESEARCH] = {
+        name: Default.DEEP_RESEARCH,
+        description: "run a deep, multi-source, fact-checked research workflow",
+        source: "command",
+        get template() {
+          return deepResearchTemplate()
+        },
+        subtask: true,
+        hints: hints(deepResearchTemplate()),
       }
 
       for (const [name, command] of Object.entries(cfg.command ?? {})) {

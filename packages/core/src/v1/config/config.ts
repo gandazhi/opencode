@@ -155,6 +155,9 @@ export const Info = Schema.Struct({
       scriptDeadlineMs: Schema.optional(Schema.Number).annotate({
         description: "Wall-clock budget for a whole workflow script in milliseconds (default: 12h)",
       }),
+      agentTimeoutMs: Schema.optional(Schema.Number).annotate({
+        description: "Per-agent wall-clock budget in milliseconds; a hung agent is cancelled and degrades to null (default: 5min)",
+      }),
     }),
   ).annotate({ description: "Dynamic workflow runtime settings" }),
   tools: Schema.optional(Schema.Record(Schema.String, Schema.Boolean)),

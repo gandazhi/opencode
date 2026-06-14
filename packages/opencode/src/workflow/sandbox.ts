@@ -1,10 +1,32 @@
 import {
-  getQuickJS,
+  newQuickJSWASMModule,
   shouldInterruptAfterDeadline,
   type QuickJSContext,
   type QuickJSDeferredPromise,
   type QuickJSHandle,
+  type QuickJSWASMModule,
 } from "quickjs-emscripten"
+import { newVariant } from "quickjs-emscripten-core"
+import RELEASE_SYNC from "@jitl/quickjs-wasmfile-release-sync"
+// Import the WASM as a file asset so Bun's bundler embeds it in the compiled
+// binary (via `with { type: "file" }`). quickjs-emscripten's default loader
+// resolves the WASM through `new URL(..., import.meta.url)`, which breaks inside
+// a Bun-compiled binary (`/$bunfs/root/...` has no embedded wasm) with
+// ENOENT. Pre-loading the bytes and handing them to a custom variant bypasses
+// filesystem resolution entirely.
+import wasmUrl from "@jitl/quickjs-wasmfile-release-sync/wasm" with { type: "file" }
+
+// Singleton QuickJS module (mirrors getQuickJS's caching). Built once with a
+// variant whose wasmBinary is the pre-loaded bytes, so the engine never touches
+// the filesystem to locate emscripten-module.wasm.
+let quickJSPromise: Promise<QuickJSWASMModule> | undefined
+function loadQuickJS() {
+  return (quickJSPromise ??= (async () => {
+    const wasmBinary = await Bun.file(wasmUrl).arrayBuffer()
+    const variant = newVariant(RELEASE_SYNC, { wasmBinary })
+    return newQuickJSWASMModule(variant)
+  })())
+}
 
 /** An injected host function: receives already-marshaled JS args, returns a JS value or Promise. */
 export type HostFn = (...args: unknown[]) => unknown | Promise<unknown>
@@ -75,7 +97,7 @@ globalThis.URL = class URL {
  *  - every QuickJSHandle disposed before context dispose (else process abort)
  */
 export async function evalScript(body: string, hooks: Record<string, HostFn>, opts: SandboxOptions = {}): Promise<unknown> {
-  const QuickJS = await getQuickJS()
+  const QuickJS = await loadQuickJS()
   const rt = QuickJS.newRuntime()
   rt.setMemoryLimit(opts.memoryLimitBytes ?? DEFAULT_MEMORY)
   rt.setInterruptHandler(shouldInterruptAfterDeadline(Date.now() + (opts.deadlineMs ?? DEFAULT_DEADLINE_MS)))

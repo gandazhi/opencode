@@ -9,43 +9,32 @@ import type { SessionID } from "@/session/schema"
 
 const id = "workflow"
 
-const runSchema = Schema.Struct({
-  operation: Schema.Literal("run"),
+export const parameters = Schema.Struct({
+  operation: Schema.Literals(["run", "status", "wait", "cancel", "resume"]).annotate({
+    description: "The operation to perform.",
+  }),
   name: Schema.optional(Schema.String).annotate({
     description:
-      '(optional) Name of a built-in workflow to run (e.g. "deep-research"). Provide EITHER name OR script, not both.',
+      '(operation "run" only) Name of a built-in workflow to run (e.g. "deep-research"). Provide EITHER name OR script, not both.',
   }),
   script: Schema.optional(Schema.String).annotate({
     description:
-      "(optional) Inline JS workflow script; must begin with `export const meta = {...}`. Provide EITHER name OR script, not both.",
+      '(operation "run" only) Inline JS workflow script; must begin with `export const meta = {...}`. Provide EITHER name OR script, not both.',
   }),
   args: Schema.optional(Schema.Unknown).annotate({
-    description: "(optional) JSON value exposed to the script as `args`.",
+    description: '(operation "run" only) JSON value exposed to the script as `args`.',
   }),
   workspace: Schema.optional(Schema.String).annotate({
     description:
-      "(optional) Absolute dir the script's file primitives (readFile/writeFile/glob/exists) are jailed to. Defaults to the project worktree.",
+      '(operation "run" only) Absolute dir the script\'s file primitives are jailed to. Defaults to the project worktree.',
+  }),
+  run_id: Schema.optional(Schema.String).annotate({
+    description: '(operations "status", "wait", "cancel", "resume") The workflow run ID.',
+  }),
+  timeout_ms: Schema.optional(PositiveInt).annotate({
+    description: '(operation "wait" only) Timeout in milliseconds.',
   }),
 })
-const statusSchema = Schema.Struct({
-  operation: Schema.Literal("status"),
-  run_id: Schema.String,
-})
-const waitSchema = Schema.Struct({
-  operation: Schema.Literal("wait"),
-  run_id: Schema.String,
-  timeout_ms: Schema.optional(PositiveInt),
-})
-const cancelSchema = Schema.Struct({
-  operation: Schema.Literal("cancel"),
-  run_id: Schema.String,
-})
-const resumeSchema = Schema.Struct({
-  operation: Schema.Literal("resume"),
-  run_id: Schema.String,
-})
-
-export const parameters = Schema.Union([runSchema, statusSchema, waitSchema, cancelSchema, resumeSchema])
 
 type Parameters = Schema.Schema.Type<typeof parameters>
 type Metadata = { runID?: string; status?: string }
@@ -98,6 +87,7 @@ export const WorkflowTool = Tool.define<typeof parameters, Metadata, Config.Serv
           workspace: input.workspace,
           maxConcurrentAgents: cfg.workflow?.maxConcurrentAgents,
           scriptDeadlineMs: cfg.workflow?.scriptDeadlineMs,
+          agentTimeoutMs: cfg.workflow?.agentTimeoutMs,
         })
         return {
           title: "workflow started",
@@ -105,40 +95,40 @@ export const WorkflowTool = Tool.define<typeof parameters, Metadata, Config.Serv
           metadata: { runID: started.runID } satisfies Metadata,
         }
       }
+      const runID = input.run_id ?? ""
       if (input.operation === "status") {
-        const snapshot = yield* runtime.status({ runID: input.run_id })
+        const snapshot = yield* runtime.status({ runID })
         return {
           title: `workflow ${snapshot.status}`,
           output: JSON.stringify(snapshot),
-          metadata: { runID: input.run_id, status: snapshot.status } satisfies Metadata,
+          metadata: { runID, status: snapshot.status } satisfies Metadata,
         }
       }
       if (input.operation === "wait") {
-        const outcome = yield* runtime.wait({ runID: input.run_id, timeoutMs: input.timeout_ms })
+        const outcome = yield* runtime.wait({ runID, timeoutMs: input.timeout_ms })
         return {
           title: `workflow ${outcome.status}`,
           output: JSON.stringify(outcome),
-          metadata: { runID: input.run_id, status: outcome.status } satisfies Metadata,
+          metadata: { runID, status: outcome.status } satisfies Metadata,
         }
       }
       if (input.operation === "cancel") {
-        yield* runtime.cancel({ runID: input.run_id })
+        yield* runtime.cancel({ runID })
         return {
           title: "workflow cancelled",
-          output: `Cancelled ${input.run_id}`,
-          metadata: { runID: input.run_id, status: "cancelled" } satisfies Metadata,
+          output: `Cancelled ${runID}`,
+          metadata: { runID, status: "cancelled" } satisfies Metadata,
         }
       }
       if (input.operation === "resume") {
-        const resumed = yield* runtime.resume({ runID: input.run_id })
+        const resumed = yield* runtime.resume({ runID })
         return {
           title: resumed.resumed ? "workflow resumed" : "workflow not resumable",
           output: JSON.stringify(resumed),
-          metadata: { runID: input.run_id } satisfies Metadata,
+          metadata: { runID } satisfies Metadata,
         }
       }
-      input satisfies never
-      throw new Error(`unhandled workflow operation: ${(input as { operation: string }).operation}`)
+      throw new Error(`unhandled workflow operation: ${input.operation}`)
     })
 
     return {
