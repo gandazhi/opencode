@@ -52,12 +52,36 @@ export function journalKey(
   return journalKeyBase(prompt, opts) + ":" + occ
 }
 
+export type WorkflowTokens = {
+  input: number
+  output: number
+  reasoning: number
+  cache: { read: number; write: number }
+}
+
+export type AgentRecord = {
+  key: string
+  sessionID?: string
+  agentType: string
+  label?: string
+  phase?: string
+  status: "running" | "succeeded" | "failed"
+  reason?: string
+  retry?: number
+  startedAt: number
+  endedAt?: number
+  cost?: number
+  tokens?: WorkflowTokens
+}
+
 export type JournalEvent =
   | { t: "agent"; key: string; result: unknown; pass: number }
+  | { t: "agent_start"; key: string; sessionID?: string; agentType: string; label?: string; phase?: string; ts: number; pass: number }
+  | { t: "agent_end"; key: string; ok: boolean; reason?: string; retry?: number; cost?: number; tokens?: WorkflowTokens; ts: number; pass: number }
   | { t: "log"; msg: string; pass: number }
   | { t: "phase"; title: string; pass: number }
 
-export type JournalLoad = { results: Map<string, unknown>; pass: number }
+export type JournalLoad = { results: Map<string, unknown>; pass: number; agents: AgentRecord[]; logs: string[] }
 
 export type RunSummary = {
   runID: string
@@ -219,9 +243,12 @@ const appendJournalSync = (runID: string, events: JournalEvent[]) =>
 const loadJournal = (runID: string): Effect.Effect<JournalLoad> =>
   Effect.promise(async () => {
     const file = Bun.file(journalPath(runID))
-    if (!(await file.exists())) return { results: new Map(), pass: 1 }
+    if (!(await file.exists())) return { results: new Map(), pass: 1, agents: [], logs: [] }
     const text = await file.text()
     const results = new Map<string, unknown>()
+    const agents = new Map<string, AgentRecord>()
+    const agentOrder: string[] = []
+    const logs: string[] = []
     let maxPass = 0
     for (const line of text.split("\n")) {
       if (!line) continue
@@ -232,9 +259,45 @@ const loadJournal = (runID: string): Effect.Effect<JournalLoad> =>
         continue
       }
       if (typeof ev.pass === "number" && ev.pass > maxPass) maxPass = ev.pass
-      if (ev.t === "agent") results.set(ev.key, ev.result)
+      switch (ev.t) {
+        case "agent":
+          results.set(ev.key, ev.result)
+          break
+        case "agent_start": {
+          if (!agents.has(ev.key)) {
+            agentOrder.push(ev.key)
+            agents.set(ev.key, {
+              key: ev.key,
+              sessionID: ev.sessionID,
+              agentType: ev.agentType,
+              label: ev.label,
+              phase: ev.phase,
+              status: "running",
+              startedAt: ev.ts,
+            })
+          }
+          break
+        }
+        case "agent_end": {
+          const existing = agents.get(ev.key)
+          if (existing) {
+            existing.status = ev.ok ? "succeeded" : "failed"
+            existing.endedAt = ev.ts
+            existing.reason = ev.reason
+            existing.retry = ev.retry
+            existing.cost = ev.cost
+            existing.tokens = ev.tokens
+          }
+          break
+        }
+        case "log":
+          logs.push(ev.msg)
+          break
+        case "phase":
+          break
+      }
     }
-    return { results, pass: maxPass + 1 }
+    return { results, pass: maxPass + 1, agents: agentOrder.map((k) => agents.get(k)!), logs }
   })
 
 const clearJournal = (runID: string) =>
