@@ -141,6 +141,22 @@ export const Info = Schema.Struct({
   }),
   layout: Schema.optional(ConfigLayoutV1.Layout).annotate({ description: "@deprecated Always uses stretch layout." }),
   permission: Schema.optional(ConfigPermissionV1.Info),
+  workflow: Schema.optional(
+    Schema.Struct({
+      maxConcurrentAgents: Schema.optional(Schema.Number).annotate({
+        description: "Process-wide ceiling on concurrent workflow agents (default: min(16, 2×cores))",
+      }),
+      maxDepth: Schema.optional(Schema.Number).annotate({
+        description: "Maximum workflow nesting depth before child workflows are rejected (default: 8)",
+      }),
+      maxLifecycleAgents: Schema.optional(Schema.Number).annotate({
+        description: "Hard ceiling on total agents a single workflow run may spawn (default: 1000)",
+      }),
+      scriptDeadlineMs: Schema.optional(Schema.Number).annotate({
+        description: "Wall-clock budget for a whole workflow script in milliseconds (default: 12h)",
+      }),
+    }),
+  ).annotate({ description: "Dynamic workflow runtime settings" }),
   tools: Schema.optional(Schema.Record(Schema.String, Schema.Boolean)),
   attachment: Schema.optional(ConfigAttachmentV1.Info).annotate({
     description: "Attachment processing configuration, including image size limits and resizing behavior",
