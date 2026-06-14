@@ -1,10 +1,11 @@
-import { Context, Deferred, Effect, Exit, Fiber, Layer, Scope } from "effect"
+import { Context, Deferred, Effect, Exit, Fiber, Layer, Schema, Scope } from "effect"
 import os from "node:os"
 import { createHash } from "node:crypto"
 import { Database } from "@opencode-ai/core/database/database"
 import { ProviderV2 } from "@opencode-ai/core/provider"
 import { ModelV2 } from "@opencode-ai/core/model"
 import { ConfigV1 } from "@opencode-ai/core/v1/config/config"
+import { SessionV1 } from "@opencode-ai/core/v1/session"
 import { workflowRef } from "./runtime-ref"
 import { Config } from "@/config/config"
 import { EffectBridge } from "@/effect/bridge"
@@ -21,9 +22,9 @@ import { parseMeta } from "./meta"
 import { evalScript, type HostFn } from "./sandbox"
 import { makeFileHooks, resolveInWorkspace } from "./workspace"
 import { isInlineScript, resolveWorkflowScript } from "./resolve"
-import { WorkflowAgentFailed, WorkflowChildFailed, WorkflowFinished, WorkflowLog, WorkflowPhase, WorkflowStarted } from "./events"
+import { WorkflowAgentEnded, WorkflowAgentFailed, WorkflowAgentStarted, WorkflowChildFailed, WorkflowFinished, WorkflowLog, WorkflowPhase, WorkflowProgress, WorkflowStarted } from "./events"
 import { WorkflowPersistence, journalKeyBase } from "./persistence"
-import type { RunSummary } from "./persistence"
+import type { RunSummary, WorkflowTokens } from "./persistence"
 
 type ProviderID = ProviderV2.ID
 type ModelID = ModelV2.ID
@@ -280,18 +281,35 @@ export const layer = Layer.effect(
     // to at most one DB write per ~250ms per run. flushNow is the synchronous final
     // flush on terminal. All best-effort.
     const flushTimers = new Map<string, ReturnType<typeof setTimeout>>()
+    // Persist counters to DB AND publish a workflow.progress event so clients
+    // (TUI) can show live agent counts. Single source of truth: the in-memory
+    // entry. Publishing here (rather than at each ++ site) coalesces the
+    // high-frequency bursts the semaphore already debounces.
+    const flushCounters = (entry: RunEntry) =>
+      Effect.gen(function* () {
+        yield* WorkflowPersistence.flushCounters({
+          runID: entry.runID,
+          running: entry.running,
+          succeeded: entry.succeeded,
+          failed: entry.failed,
+        }).pipe(Effect.ignore)
+        yield* events
+          .publish(WorkflowProgress, {
+            sessionID: entry.sessionID,
+            runID: entry.runID,
+            running: entry.running,
+            succeeded: entry.succeeded,
+            failed: entry.failed,
+          })
+          .pipe(Effect.ignore)
+      })
     const flushNow = (entry: RunEntry) => {
       const t = flushTimers.get(entry.runID)
       if (t) {
         clearTimeout(t)
         flushTimers.delete(entry.runID)
       }
-      return WorkflowPersistence.flushCounters({
-        runID: entry.runID,
-        running: entry.running,
-        succeeded: entry.succeeded,
-        failed: entry.failed,
-      }).pipe(Effect.ignore)
+      return flushCounters(entry)
     }
     const scheduleFlush = (entry: RunEntry) => {
       if (flushTimers.has(entry.runID)) return
@@ -299,14 +317,7 @@ export const layer = Layer.effect(
         entry.runID,
         setTimeout(() => {
           flushTimers.delete(entry.runID)
-          layerBridge.fork(
-            WorkflowPersistence.flushCounters({
-              runID: entry.runID,
-              running: entry.running,
-              succeeded: entry.succeeded,
-              failed: entry.failed,
-            }).pipe(Effect.ignore),
-          )
+          layerBridge.fork(flushCounters(entry))
         }, 250),
       )
     }
@@ -501,15 +512,22 @@ export const layer = Layer.effect(
 
       yield* events.publish(WorkflowStarted, { sessionID: input.sessionID, runID, name })
 
+      type SpawnResult = { value: unknown; childID?: string; reason: FailReason; cost?: number; tokens?: WorkflowTokens }
+
       const spawnShared = async (
+        key: string,
         prompt: string,
         o: AgentOpts,
         resolvedModel: { providerID: ProviderID; modelID: ModelID } | undefined,
-      ): Promise<unknown> => {
+      ): Promise<SpawnResult> => {
         entry.running++
         scheduleFlush(entry)
         let reason: FailReason = "actor-error"
         let errorMessage: string | undefined
+        let childID: string | undefined
+        let cost: number | undefined
+        let tokens: WorkflowTokens | undefined
+        const startTs = Date.now()
         const value = await bridge
           .promise(
             Effect.gen(function* () {
@@ -529,6 +547,33 @@ export const layer = Layer.effect(
                 agent: subagent.name,
                 permission,
               })
+              childID = child.id
+              entry.childActorIDs.add(child.id)
+
+              // Emit agent_start (journal + event) now that the child session exists
+              yield* WorkflowPersistence.appendJournalSync(runID, [
+                {
+                  t: "agent_start",
+                  key,
+                  sessionID: child.id,
+                  agentType: o.agentType ?? "general",
+                  label: o.label,
+                  phase: o.phase ?? entry.currentPhase,
+                  ts: startTs,
+                  pass,
+                },
+              ]).pipe(Effect.ignore)
+              bridge.fork(
+                events.publish(WorkflowAgentStarted, {
+                  sessionID: input.sessionID,
+                  runID,
+                  key,
+                  agentID: child.id,
+                  agentType: o.agentType ?? "general",
+                  label: o.label,
+                  phase: o.phase ?? entry.currentPhase,
+                }),
+              )
 
               const parts = yield* prompts.resolvePromptParts(prompt)
 
@@ -542,11 +587,30 @@ export const layer = Layer.effect(
                     ...(resolvedModel ? { model: resolvedModel } : {}),
                     parts,
                     ...(o.schema
-                      ? { format: { type: "json_schema" as const, schema: o.schema } }
+                      ? {
+                          format: Schema.decodeSync(SessionV1.Format)({
+                            type: "json_schema",
+                            schema: o.schema,
+                          }),
+                        }
                       : {}),
                   })
                   .pipe(
                     Effect.map((msg) => {
+                      // Capture accumulated cost/tokens from the completed child session
+                      const info = msg.info as {
+                        cost?: number
+                        tokens?: { input?: number; output?: number; reasoning?: number; cache?: { read?: number; write?: number } }
+                      }
+                      if (typeof info.cost === "number") cost = info.cost
+                      if (info.tokens) {
+                        tokens = {
+                          input: info.tokens.input ?? 0,
+                          output: info.tokens.output ?? 0,
+                          reasoning: info.tokens.reasoning ?? 0,
+                          cache: { read: info.tokens.cache?.read ?? 0, write: info.tokens.cache?.write ?? 0 },
+                        }
+                      }
                       if (o.schema) {
                         const v = (msg.info as { structured?: unknown }).structured ?? null
                         if (v === null) reason = "no-deliverable"
@@ -556,9 +620,10 @@ export const layer = Layer.effect(
                       if (text === null) reason = "no-deliverable"
                       return text
                     }),
-                    Effect.catchCause(() =>
+                    Effect.catchCause((cause) =>
                       Effect.sync(() => {
                         reason = "actor-error"
+                        errorMessage = cause.toString()
                         return null
                       }),
                     ),
@@ -583,7 +648,7 @@ export const layer = Layer.effect(
           publishAgentFailed(o, reason, { errorMessage })
         }
         scheduleFlush(entry)
-        return value
+        return { value, childID, reason, cost, tokens }
       }
 
       const agent: HostFn = (prompt: unknown, opts?: unknown) => {
@@ -604,19 +669,51 @@ export const layer = Layer.effect(
           return Promise.resolve(journal.results.get(key))
         }
         return (async () => {
+          let spawnResult: SpawnResult
           const result = await sem.run(async () =>
             globalSemLocal.run(async () => {
               if (entry.agentCount >= lifecycleCap) {
                 warnCapOnce()
                 publishAgentFailed(o, "over-cap")
+                spawnResult = { value: null, reason: "over-cap" }
                 return null
               }
               entry.agentCount++
               const resolvedModel = await bridge.promise(resolveAgentModel(o.model, input.model, entry.warnedModelRefs))
-              return spawnShared(promptStr, o, resolvedModel)
+              spawnResult = await spawnShared(key, promptStr, o, resolvedModel)
+              return spawnResult.value
             }),
           )
-          if (result !== null) {
+          const ok = result !== null
+          const sr = spawnResult!
+          // Emit agent_end (journal + event) with cost/tokens captured at completion
+          const endTs = Date.now()
+          await bridge.promise(
+            WorkflowPersistence.appendJournalSync(runID, [
+              {
+                t: "agent_end",
+                key,
+                ok,
+                reason: ok ? undefined : sr.reason,
+                ts: endTs,
+                ...(sr.cost !== undefined ? { cost: sr.cost } : {}),
+                ...(sr.tokens ? { tokens: sr.tokens } : {}),
+                pass,
+              },
+            ]).pipe(Effect.ignore),
+          )
+          bridge.fork(
+            events.publish(WorkflowAgentEnded, {
+              sessionID: input.sessionID,
+              runID,
+              key,
+              status: ok ? ("succeeded" as const) : ("failed" as const),
+              reason: ok ? undefined : sr.reason,
+              ...(sr.cost !== undefined ? { cost: sr.cost } : {}),
+              ...(sr.tokens ? { tokens: sr.tokens } : {}),
+            }),
+          )
+          if (ok) {
             await bridge.promise(
               WorkflowPersistence.appendJournalSync(runID, [{ t: "agent", key, result, pass }]).pipe(Effect.ignore),
             )
