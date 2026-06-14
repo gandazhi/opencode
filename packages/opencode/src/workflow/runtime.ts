@@ -944,6 +944,9 @@ export const layer = Layer.effect(
 
 export const defaultLayer = layer.pipe(
   Layer.provide(Config.defaultLayer),
+  Layer.provide(Database.defaultLayer),
+  Layer.provide(EventV2Bridge.defaultLayer),
+  Layer.provide(SessionPrompt.defaultLayer),
 )
 
 export * as WorkflowRuntime from "./runtime"
