@@ -6,12 +6,15 @@ import { ProviderV2 } from "@opencode-ai/core/provider"
 import { ModelV2 } from "@opencode-ai/core/model"
 import { ConfigV1 } from "@opencode-ai/core/v1/config/config"
 import { SessionV1 } from "@opencode-ai/core/v1/session"
+import { Location } from "@opencode-ai/core/location"
+import { Project } from "@opencode-ai/core/project"
+import { AbsolutePath } from "@opencode-ai/core/schema"
 import { workflowRef } from "./runtime-ref"
 import { Config } from "@/config/config"
 import { EffectBridge } from "@/effect/bridge"
 import { EventV2Bridge } from "@/event-v2-bridge"
 import { Provider } from "@/provider/provider"
-import { InstanceRef } from "@/effect/instance-ref"
+import { InstanceRef, WorkspaceRef } from "@/effect/instance-ref"
 import { Identifier } from "@/id/id"
 import { Session } from "@/session/session"
 import { SessionPrompt } from "@/session/prompt"
@@ -96,6 +99,11 @@ interface RunEntry {
   // run re-warns. See resolveAgentModel.
   warnedModelRefs: Set<string>
   currentPhase: string | undefined
+  // Location captured at launch time so debounced flushCounters (published via
+  // layerBridge which lacks InstanceRef) can attach location explicitly. Without
+  // this, WorkflowProgress events lack location and get dropped by the SSE
+  // stream's directory filter, so TUI counters never update in real-time.
+  eventLocation: Location.Info | undefined
 }
 
 interface StartInput {
@@ -301,13 +309,17 @@ export const layer = Layer.effect(
           failed: entry.failed,
         }).pipe(Effect.ignore)
         yield* events
-          .publish(WorkflowProgress, {
-            sessionID: entry.sessionID,
-            runID: entry.runID,
-            running: entry.running,
-            succeeded: entry.succeeded,
-            failed: entry.failed,
-          })
+          .publish(
+            WorkflowProgress,
+            {
+              sessionID: entry.sessionID,
+              runID: entry.runID,
+              running: entry.running,
+              succeeded: entry.succeeded,
+              failed: entry.failed,
+            },
+            entry.eventLocation ? { location: entry.eventLocation } : undefined,
+          )
           .pipe(Effect.ignore)
       })
     const flushNow = (entry: RunEntry) => {
@@ -369,9 +381,18 @@ export const layer = Layer.effect(
       const parsed = parseMeta(input.script)
       const body = parsed.ok ? parsed.body : input.script
       const instanceCtx = yield* InstanceRef
+      const workspaceID = yield* WorkspaceRef
       const workspaceRoot = input.workspace ?? instanceCtx?.worktree ?? ""
       const fileHooks = makeFileHooks(workspaceRoot)
       const deferred = yield* Deferred.make<RunOutcome>()
+      const eventLocation =
+        instanceCtx !== undefined
+          ? new Location.Info({
+              directory: AbsolutePath.make(instanceCtx.directory),
+              ...(workspaceID ? { workspaceID } : {}),
+              project: { id: Project.ID.make(instanceCtx.project.id), directory: AbsolutePath.make(instanceCtx.worktree) },
+            })
+          : undefined
       const entry: RunEntry = {
         runID,
         sessionID: input.sessionID,
@@ -389,6 +410,7 @@ export const layer = Layer.effect(
         capWarned: false,
         warnedModelRefs: new Set<string>(),
         currentPhase: undefined,
+        eventLocation,
       }
       runs.set(runID, entry)
       // Stamp a sha256 of the FULL script body (the exact bytes writeScript persists

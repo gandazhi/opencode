@@ -7,7 +7,7 @@ import { useTheme } from "../../context/theme"
 import { useToast } from "../../ui/toast"
 import { useDialog } from "../../ui/dialog"
 import { DialogConfirm } from "../../ui/dialog-confirm"
-import { useBindings } from "../../keymap"
+import { useBindings, useOpencodeModeStack } from "../../keymap"
 
 const STATUS_GLYPH: Record<string, string> = {
   running: "◐",
@@ -50,11 +50,16 @@ export function WorkflowDetail() {
 
   const [selectedAgent, setSelectedAgent] = createSignal(0)
   const [now, setNow] = createSignal(Date.now())
+  const modeStack = useOpencodeModeStack()
 
   onMount(() => {
     void sync.workflow.detail(runID())
     const interval = setInterval(() => setNow(Date.now()), 1000)
-    onCleanup(() => clearInterval(interval))
+    const popMode = modeStack.push("workflow.detail")
+    onCleanup(() => {
+      clearInterval(interval)
+      popMode()
+    })
   })
 
   const headerLine = createMemo(() => {
