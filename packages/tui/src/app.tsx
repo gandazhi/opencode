@@ -44,6 +44,7 @@ import { DialogThemeList } from "./component/dialog-theme-list"
 import { DialogHelp } from "./ui/dialog-help"
 import { DialogAgent } from "./component/dialog-agent"
 import { DialogSessionList } from "./component/dialog-session-list"
+import { DialogWorkflows } from "./component/dialog-workflows"
 import { DialogWorkspaceList } from "./component/dialog-workspace-list"
 import { DialogConsoleOrg } from "./component/dialog-console-org"
 import { ThemeProvider, useTheme } from "./context/theme"
@@ -576,6 +577,15 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
             type: "home",
           })
           dialog.clear()
+        },
+      },
+      {
+        name: "workflow.list",
+        title: "Workflows",
+        category: "Session",
+        slashName: "workflows",
+        run: () => {
+          dialog.replace(() => <DialogWorkflows />)
         },
       },
       {
