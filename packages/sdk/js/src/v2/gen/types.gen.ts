@@ -2048,6 +2048,28 @@ export type Config = {
   instructions?: Array<string>
   layout?: LayoutConfig
   permission?: PermissionConfig
+  workflow?: {
+    /**
+     * Process-wide ceiling on concurrent workflow agents (default: min(16, 2×cores))
+     */
+    maxConcurrentAgents?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    /**
+     * Maximum workflow nesting depth before child workflows are rejected (default: 8)
+     */
+    maxDepth?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    /**
+     * Hard ceiling on total agents a single workflow run may spawn (default: 1000)
+     */
+    maxLifecycleAgents?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    /**
+     * Wall-clock budget for a whole workflow script in milliseconds (default: 12h)
+     */
+    scriptDeadlineMs?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    /**
+     * Per-agent wall-clock budget in milliseconds; a hung agent is cancelled and degrades to null (default: 5min)
+     */
+    agentTimeoutMs?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+  }
   tools?: {
     [key: string]: boolean
   }
@@ -2714,6 +2736,20 @@ export type EventTuiSessionSelect = {
      * Session ID to navigate to
      */
     sessionID: string
+  }
+}
+
+export type WorkflowNotFound = {
+  name: "WorkflowNotFound"
+  data: {
+    runID: string
+  }
+}
+
+export type WorkflowRunning = {
+  name: "WorkflowRunning"
+  data: {
+    runID: string
   }
 }
 
@@ -9256,6 +9292,219 @@ export type TuiControlResponseResponses = {
 }
 
 export type TuiControlResponseResponse = TuiControlResponseResponses[keyof TuiControlResponseResponses]
+
+export type WorkflowListData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+    session_id?: string
+  }
+  url: "/workflow"
+}
+
+export type WorkflowListErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type WorkflowListError = WorkflowListErrors[keyof WorkflowListErrors]
+
+export type WorkflowListResponses = {
+  /**
+   * List of workflow runs
+   */
+  200: Array<{
+    runID: string
+    sessionID: string
+    name: string
+    status: "running" | "completed" | "failed" | "cancelled"
+    running: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    succeeded: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    failed: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    currentPhase?: string
+    error?: string
+    createdAt: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    updatedAt: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+  }>
+}
+
+export type WorkflowListResponse = WorkflowListResponses[keyof WorkflowListResponses]
+
+export type WorkflowDeleteData = {
+  body?: never
+  path: {
+    runID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/workflow/{runID}"
+}
+
+export type WorkflowDeleteErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * WorkflowRunning
+   */
+  409: WorkflowRunning
+}
+
+export type WorkflowDeleteError = WorkflowDeleteErrors[keyof WorkflowDeleteErrors]
+
+export type WorkflowDeleteResponses = {
+  /**
+   * Deletion result
+   */
+  200: {
+    ok: boolean
+  }
+}
+
+export type WorkflowDeleteResponse = WorkflowDeleteResponses[keyof WorkflowDeleteResponses]
+
+export type WorkflowDetailData = {
+  body?: never
+  path: {
+    runID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/workflow/{runID}"
+}
+
+export type WorkflowDetailErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * WorkflowNotFound
+   */
+  404: WorkflowNotFound
+}
+
+export type WorkflowDetailError = WorkflowDetailErrors[keyof WorkflowDetailErrors]
+
+export type WorkflowDetailResponses = {
+  /**
+   * Run detail with agents and logs
+   */
+  200: {
+    run: {
+      runID: string
+      sessionID: string
+      name: string
+      status: "running" | "completed" | "failed" | "cancelled"
+      running: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+      succeeded: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+      failed: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+      currentPhase?: string
+      error?: string
+      createdAt: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+      updatedAt: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    }
+    agents: Array<{
+      key: string
+      sessionID?: string
+      agentType: string
+      label?: string
+      phase?: string
+      status: "running" | "succeeded" | "failed"
+      reason?: string
+      retry?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+      startedAt: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+      endedAt?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+      cost?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+      tokens?: {
+        input: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+        output: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+        reasoning: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+        cache: {
+          read: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+          write: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+        }
+      }
+    }>
+    logs: Array<string>
+  }
+}
+
+export type WorkflowDetailResponse = WorkflowDetailResponses[keyof WorkflowDetailResponses]
+
+export type WorkflowCancelData = {
+  body?: never
+  path: {
+    runID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/workflow/{runID}/cancel"
+}
+
+export type WorkflowCancelErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type WorkflowCancelError = WorkflowCancelErrors[keyof WorkflowCancelErrors]
+
+export type WorkflowCancelResponses = {
+  /**
+   * Cancel result
+   */
+  200: {
+    ok: boolean
+  }
+}
+
+export type WorkflowCancelResponse = WorkflowCancelResponses[keyof WorkflowCancelResponses]
+
+export type WorkflowResumeData = {
+  body?: never
+  path: {
+    runID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/workflow/{runID}/resume"
+}
+
+export type WorkflowResumeErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type WorkflowResumeError = WorkflowResumeErrors[keyof WorkflowResumeErrors]
+
+export type WorkflowResumeResponses = {
+  /**
+   * Resume result
+   */
+  200: {
+    runID: string
+    resumed: boolean
+  }
+}
+
+export type WorkflowResumeResponse = WorkflowResumeResponses[keyof WorkflowResumeResponses]
 
 export type ExperimentalWorkspaceAdapterListData = {
   body?: never
