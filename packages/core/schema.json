@@ -1,10 +1,8 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "bded0e1e-a3b3-43ba-a4a7-067e80cd8ef1",
-  "prevIds": [
-    "abd2f920-b822-49af-b8a7-2e48367d424f"
-  ],
+  "id": "merged-v1.17.6-workflow",
+  "prevIds": ["169a0f0f-d58f-479f-b024-fa1c7b9a09db", "bded0e1e-a3b3-43ba-a4a7-067e80cd8ef1"],
   "ddl": [
     {
       "name": "workspace",
@@ -628,11 +626,21 @@
     },
     {
       "type": "text",
-      "notNull": true,
+      "notNull": false,
       "autoincrement": false,
       "default": null,
       "generated": null,
       "name": "type",
+      "entityType": "columns",
+      "table": "project_directory"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "strategy",
       "entityType": "columns",
       "table": "project_directory"
     },
