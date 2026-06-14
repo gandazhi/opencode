@@ -37,6 +37,18 @@ const emptyConsoleState: ConsoleState = {
   switchableOrgCount: 0,
 }
 
+export type WorkflowRun = {
+  runID: string
+  sessionID: string
+  name: string
+  status: "running" | "completed" | "failed" | "cancelled"
+  running: number
+  succeeded: number
+  failed: number
+  currentPhase?: string
+  error?: string
+}
+
 function search<T>(items: T[], target: string, key: (item: T) => string) {
   let left = 0
   let right = items.length - 1
@@ -106,6 +118,9 @@ export const {
       part: {
         [messageID: string]: Part[]
       }
+      workflow: {
+        [runID: string]: WorkflowRun
+      }
       lsp: LspStatus[]
       mcp: {
         [key: string]: McpStatus
@@ -138,6 +153,7 @@ export const {
       goal: {},
       message: {},
       part: {},
+      workflow: {},
       lsp: [],
       mcp: {},
       mcp_resource: {},
@@ -176,6 +192,37 @@ export const {
     }
 
     event.subscribe((event, { workspace }) => {
+      const type = event.type as string
+      if (type === "workflow.started") {
+        const { sessionID, runID, name } = (event as unknown as { properties: { sessionID: string; runID: string; name: string } }).properties
+        setStore("workflow", runID, (prev) => ({
+          runID,
+          sessionID,
+          name,
+          status: "running" as const,
+          running: prev?.running ?? 0,
+          succeeded: prev?.succeeded ?? 0,
+          failed: prev?.failed ?? 0,
+          currentPhase: prev?.currentPhase,
+          error: undefined,
+        }))
+        return
+      }
+      if (type === "workflow.phase") {
+        const { runID, title } = (event as unknown as { properties: { runID: string; title: string } }).properties
+        setStore("workflow", runID, "currentPhase", title)
+        return
+      }
+      if (type === "workflow.finished") {
+        const { runID, status, error } = (event as unknown as {
+          properties: { runID: string; status: WorkflowRun["status"]; error?: string }
+        }).properties
+        setStore("workflow", runID, (prev) =>
+          prev ? { ...prev, status, error } : prev,
+        )
+        return
+      }
+
       switch (event.type) {
         case "server.instance.disposed":
           void bootstrap()
@@ -670,6 +717,33 @@ export const {
           })
           syncingSessions.set(sessionID, task)
           return task
+        },
+      },
+      workflow: {
+        async load(sessionID?: string) {
+          const params = new URLSearchParams()
+          const ws = project.workspace.current()
+          if (ws) params.set("workspace", ws)
+          if (sessionID) params.set("session_id", sessionID)
+          const query = params.toString()
+          const response = await sdk.fetch(`${sdk.url}/workflow${query ? "?" + query : ""}`)
+          if (!response.ok) return
+          const runs: WorkflowRun[] = await response.json()
+          setStore(
+            "workflow",
+            produce((draft) => {
+              for (const run of runs) draft[run.runID] = run
+            }),
+          )
+        },
+        async resume(runID: string) {
+          const params = new URLSearchParams()
+          const ws = project.workspace.current()
+          if (ws) params.set("workspace", ws)
+          const query = params.toString()
+          await sdk.fetch(`${sdk.url}/workflow/${runID}/resume${query ? "?" + query : ""}`, {
+            method: "POST",
+          })
         },
       },
       bootstrap,
