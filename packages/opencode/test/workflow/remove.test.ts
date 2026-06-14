@@ -6,14 +6,16 @@ import { Database } from "@opencode-ai/core/database/database"
 import { WorkflowPersistence } from "@/workflow/persistence"
 import { SessionTable } from "@opencode-ai/core/session/sql"
 import { ProjectTable } from "@opencode-ai/core/project/sql"
+import { ProjectV2 } from "@opencode-ai/core/project"
+import { SessionID } from "@/session/schema"
 
 const dbLayer = Database.defaultLayer
-const runDb = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  effect.pipe(Effect.provide(dbLayer), Effect.scoped, Effect.runPromise)
+const runDb = (effect: Effect.Effect<unknown, unknown, unknown>) =>
+  (effect as Effect.Effect<unknown, unknown, never>).pipe(Effect.provide(dbLayer), Effect.scoped, Effect.runPromise) as Promise<unknown>
 
 const RUN_ID = "wf_remove001"
-const SESS_ID = "sess_remove_test"
-const PROJ_ID = "proj_remove_test"
+const SESS_ID = SessionID.make("sess_remove_test")
+const PROJ_ID = ProjectV2.ID.make("proj_remove_test")
 const workflowDir = () => path.join(Global.Path.data, "workflow")
 
 describe("WorkflowPersistence.remove", () => {
@@ -25,10 +27,9 @@ describe("WorkflowPersistence.remove", () => {
     await runDb(
       Effect.gen(function* () {
         const { db } = yield* Database.Service
-        // Insert parent rows to satisfy FK constraints
         yield* db
           .insert(ProjectTable)
-          .values({ id: PROJ_ID, worktree: "/tmp/test", sandboxes: [] })
+          .values({ id: PROJ_ID, worktree: "/tmp/test" as never, sandboxes: [] as never })
           .run()
           .pipe(Effect.ignore)
         yield* db
