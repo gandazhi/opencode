@@ -307,6 +307,18 @@ const clearJournal = (runID: string) =>
     await Bun.write(journalPath(runID), "")
   })
 
+const remove = (runID: string) =>
+  Effect.gen(function* () {
+    const { db } = yield* Database.Service
+    const safe = safeRunID(runID)
+    yield* db.delete(WorkflowRunTable).where(eq(WorkflowRunTable.id, safe)).run().pipe(Effect.orDie)
+    yield* Effect.promise(async () => {
+      const fs = await import("fs/promises")
+      await fs.rm(scriptPath(safe), { force: true })
+      await fs.rm(journalPath(safe), { force: true })
+    })
+  })
+
 export const WorkflowPersistence = {
   recordStart,
   recordPhase,
@@ -320,4 +332,5 @@ export const WorkflowPersistence = {
   appendJournalSync,
   loadJournal,
   clearJournal,
+  remove,
 }
