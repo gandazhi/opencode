@@ -1,7 +1,8 @@
 /** @jsxImportSource @opentui/solid */
 import { TextAttributes } from "@opentui/core"
-import { createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js"
+import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js"
 import { useSync } from "../../context/sync"
+import { useSDK } from "../../context/sdk"
 import { useRoute } from "../../context/route"
 import { useTheme } from "../../context/theme"
 import { useToast } from "../../ui/toast"
@@ -36,8 +37,24 @@ function formatCost(cost?: number): string {
   return `$${cost.toFixed(2)}`
 }
 
+function formatToolInput(input: Record<string, unknown>): string {
+  const skip = new Set(["metadata"])
+  const parts: string[] = []
+  for (const [key, value] of Object.entries(input)) {
+    if (skip.has(key)) continue
+    if (typeof value === "string") {
+      const truncated = value.length > 80 ? value.slice(0, 77) + "…" : value
+      parts.push(`${key}: "${truncated}"`)
+    } else if (typeof value === "number" || typeof value === "boolean") {
+      parts.push(`${key}: ${value}`)
+    }
+  }
+  return parts.join("  ")
+}
+
 export function WorkflowDetail() {
   const sync = useSync()
+  const sdk = useSDK()
   const route = useRoute()
   const { theme } = useTheme()
   const toast = useToast()
@@ -51,6 +68,28 @@ export function WorkflowDetail() {
   const [selectedAgent, setSelectedAgent] = createSignal(0)
   const [now, setNow] = createSignal(Date.now())
   const modeStack = useOpencodeModeStack()
+
+  const selectedAgentSessionID = createMemo(() => agents()[selectedAgent()]?.sessionID)
+  const [agentToolCalls, setAgentToolCalls] = createSignal<any[]>([])
+
+  createEffect(() => {
+    const sessionID = selectedAgentSessionID()
+    if (!sessionID) {
+      setAgentToolCalls([])
+      return
+    }
+    void (async () => {
+      try {
+        const result = await sdk.client.session.messages({ sessionID, limit: 100 })
+        const tools = (result.data ?? []).flatMap((msg: any) =>
+          (msg.parts ?? []).filter((p: any) => p.type === "tool"),
+        )
+        setAgentToolCalls(tools)
+      } catch {
+        setAgentToolCalls([])
+      }
+    })()
+  })
 
   onMount(() => {
     void sync.workflow.detail(runID())
@@ -124,7 +163,7 @@ export function WorkflowDetail() {
     ],
   }))
 
-  const logsHeight = 8
+  const logsHeight = 4
 
   return (
     <box width="100%" height="100%" flexDirection="column" backgroundColor={theme.background}>
@@ -134,11 +173,11 @@ export function WorkflowDetail() {
         </text>
       </box>
 
-      <box flexGrow={1} flexDirection="column" paddingLeft={1} paddingRight={1} minHeight={0}>
+      <box flexShrink={0} flexDirection="column" paddingLeft={1} paddingRight={1}>
         <text fg={theme.textMuted} attributes={TextAttributes.BOLD}>
           Agents ({agents().length})
         </text>
-        <scrollbox flexGrow={1} scrollbarOptions={{ visible: true }}>
+        <scrollbox maxHeight={Math.max(1, Math.min(agents().length, 6))} scrollbarOptions={{ visible: false }}>
           <For each={agents()}>
             {(agent, index) => {
               const active = createMemo(() => index() === selectedAgent())
@@ -176,6 +215,42 @@ export function WorkflowDetail() {
                   <Show when={agent.reason}>
                     <text fg={theme.error} flexShrink={0}>
                       {agent.reason}
+                    </text>
+                  </Show>
+                </box>
+              )
+            }}
+          </For>
+        </scrollbox>
+      </box>
+
+      <box flexGrow={1} flexDirection="column" paddingLeft={1} paddingRight={1} minHeight={0}>
+        <text fg={theme.textMuted} attributes={TextAttributes.BOLD}>
+          Tool calls ({agentToolCalls().length})
+        </text>
+        <scrollbox flexGrow={1} scrollbarOptions={{ visible: true }}>
+          <For each={agentToolCalls()}>
+            {(tool) => {
+              const status = tool.state?.status ?? "running"
+              const glyph = STATUS_GLYPH[status] ?? "?"
+              const colorKey = STATUS_COLOR[status] ?? "info"
+              const color = theme[colorKey] ?? theme.text
+              return (
+                <box flexDirection="column" paddingBottom={0}>
+                  <box flexDirection="row">
+                    <text fg={color} flexShrink={0}>
+                      {glyph}{" "}
+                    </text>
+                    <text fg={theme.text} flexShrink={0} wrapMode="none">
+                      {(tool.tool ?? "unknown").slice(0, 28).padEnd(28)}{" "}
+                    </text>
+                    <text fg={theme.textMuted} flexGrow={1} flexShrink={1} wrapMode="none">
+                      {formatToolInput(tool.state?.input ?? {})}
+                    </text>
+                  </box>
+                  <Show when={tool.state?.status === "completed" && tool.state?.output}>
+                    <text fg={theme.textMuted} flexGrow={1} flexShrink={1} wrapMode="none" paddingLeft={2}>
+                      {"→ "} {(tool.state.output ?? "").slice(0, 120)}
                     </text>
                   </Show>
                 </box>
