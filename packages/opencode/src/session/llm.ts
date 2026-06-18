@@ -39,7 +39,7 @@ export const OUTPUT_TOKEN_MAX = ProviderTransform.OUTPUT_TOKEN_MAX
 // the stream instead of hanging up to the workflow script deadline. This is an
 // idle timeout, not a total-time cap: a slow-but-progressing agent re-arms the
 // timer on every event and is never interrupted.
-const STREAM_IDLE_TIMEOUT_MS = 120_000
+const STREAM_IDLE_TIMEOUT_MS = 600_000
 
 export type StreamInput = {
   user: SessionV1.User
