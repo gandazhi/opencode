@@ -1,7 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "version": "1.17.7",
-  "name": "@opencode-ai/http-recorder",
+  "version": "1.17.8",  "name": "@opencode-ai/http-recorder",
   "description": "Record and replay Effect HTTP client traffic with deterministic cassettes",
   "type": "module",
   "license": "MIT",
