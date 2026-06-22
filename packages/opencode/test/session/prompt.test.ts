@@ -164,7 +164,7 @@ const blockingProcessor = Layer.succeed(
   }),
 )
 
-function makePrompt(input?: { processor?: "blocking" }) {
+function makePrompt(input?: { processor?: "blocking"; goal?: Layer.Layer<Goal.Service> }) {
   const deps = Layer.mergeAll(
     Session.defaultLayer,
     Snapshot.defaultLayer,
@@ -183,7 +183,7 @@ function makePrompt(input?: { processor?: "blocking" }) {
     status,
     Database.defaultLayer,
     EventV2Bridge.defaultLayer,
-    Goal.defaultLayer,
+    input?.goal ?? Goal.defaultLayer,
   ).pipe(Layer.provideMerge(infra))
   const question = Question.layer.pipe(Layer.provideMerge(deps))
   const todo = Todo.layer.pipe(Layer.provideMerge(deps))
@@ -223,6 +223,7 @@ function makePrompt(input?: { processor?: "blocking" }) {
     Layer.provideMerge(proc),
     Layer.provideMerge(registry),
     Layer.provideMerge(trunc),
+    Layer.provideMerge(question),
     Layer.provide(Instruction.defaultLayer),
     Layer.provide(SystemPrompt.defaultLayer),
     Layer.provide(RuntimeFlags.layer({ experimentalEventSystem: true })),
@@ -231,16 +232,43 @@ function makePrompt(input?: { processor?: "blocking" }) {
   )
 }
 
-function makeHttp(input?: { processor?: "blocking" }) {
+function makeHttp(input?: { processor?: "blocking"; goal?: Layer.Layer<Goal.Service> }) {
   return Layer.mergeAll(TestLLMServer.layer, makePrompt(input))
 }
 
-function makeHttpNoLLMServer(input?: { processor?: "blocking" }) {
+function makeHttpNoLLMServer(input?: { processor?: "blocking"; goal?: Layer.Layer<Goal.Service> }) {
   return makePrompt(input)
 }
 
+const memoryGoal = Layer.effect(
+  Goal.Service,
+  Effect.sync(() => {
+    const goals = new Map<SessionID, { condition: string; react: number }>()
+    return Goal.Service.of({
+      set: (sessionID, condition) =>
+        Effect.sync(() => {
+          goals.set(sessionID, { condition, react: 0 })
+        }),
+      get: (sessionID) => Effect.sync(() => goals.get(sessionID)),
+      clear: (sessionID) =>
+        Effect.sync(() => {
+          goals.delete(sessionID)
+        }),
+      bumpReact: (sessionID) =>
+        Effect.sync(() => {
+          const current = goals.get(sessionID)
+          if (!current) return 0
+          current.react += 1
+          return current.react
+        }),
+      evaluate: () => Effect.succeed({ ok: true, reason: "memory judge" }),
+    })
+  }),
+)
+
 const it = testEffect(makeHttp())
 const noLLMServer = testEffect(makeHttpNoLLMServer())
+const memoryGoalNoLLMServer = testEffect(makeHttpNoLLMServer({ goal: memoryGoal }))
 const raceNoLLMServer = testEffect(makeHttpNoLLMServer({ processor: "blocking" }))
 const unix = process.platform !== "win32" ? it.instance : it.instance.skip
 const unixNoLLMServer = process.platform !== "win32" ? noLLMServer.instance : noLLMServer.instance.skip
@@ -450,6 +478,51 @@ noLLMServer.instance(
       const result = yield* prompt.loop({ sessionID: chat.id })
       expect(result.info.role).toBe("assistant")
       if (result.info.role === "assistant") expect(result.info.finish).toBe("stop")
+    }),
+  { config: cfg },
+)
+
+memoryGoalNoLLMServer.instance(
+  "goal gate pauses while a child session has a pending question",
+  () =>
+    Effect.gen(function* () {
+      const prompt = yield* SessionPrompt.Service
+      const sessions = yield* Session.Service
+      const question = yield* Question.Service
+      const goal = yield* Goal.Service
+      const chat = yield* sessions.create({ title: "Pinned" })
+      const child = yield* sessions.create({ parentID: chat.id, title: "Question child" })
+      yield* seed(chat.id, { finish: "stop" })
+      yield* goal.set(chat.id, "finish after answering the child question")
+
+      const fiber = yield* question
+        .ask({
+          sessionID: child.id,
+          questions: [
+            {
+              question: "Which path should the child take?",
+              header: "Path",
+              options: [{ label: "A", description: "Use path A" }],
+            },
+          ],
+        })
+        .pipe(Effect.forkScoped)
+      const request = yield* pollWithTimeout(
+        Effect.gen(function* () {
+          return (yield* question.list()).find((item) => item.sessionID === child.id)
+        }),
+        "timed out waiting for child question",
+      )
+
+      yield* prompt.loop({ sessionID: chat.id })
+
+      expect(yield* goal.get(chat.id)).toEqual({
+        condition: "finish after answering the child question",
+        react: 0,
+      })
+
+      yield* question.reject(request.id)
+      yield* Fiber.await(fiber)
     }),
   { config: cfg },
 )

@@ -29,6 +29,7 @@ import { Goal } from "./goal"
 import { pathToFileURL, fileURLToPath } from "url"
 import { Config } from "@/config/config"
 import { ConfigMarkdown } from "@/config/markdown"
+import { Question } from "@/question"
 import { SessionSummary } from "./summary"
 import { NamedError } from "@opencode-ai/core/util/error"
 import { SessionProcessor } from "./processor"
@@ -126,6 +127,7 @@ export const layer = Layer.effect(
     const llm = yield* LLM.Service
     const events = yield* EventV2Bridge.Service
     const goalSvc = yield* Goal.Service
+    const question = yield* Question.Service
     const flags = yield* RuntimeFlags.Service
     const database = yield* Database.Service
     const { db } = database
@@ -1135,6 +1137,23 @@ export const layer = Layer.effect(
       throw new Error("Impossible")
     })
 
+    const sessionTreeIDs: (sessionID: SessionID) => Effect.Effect<ReadonlyArray<SessionID>> = Effect.fn(
+      "SessionPrompt.sessionTreeIDs",
+    )(function* (sessionID) {
+      const children = yield* sessions.children(sessionID)
+      const descendants = yield* Effect.forEach(children, (child) => sessionTreeIDs(child.id), {
+        concurrency: "unbounded",
+      })
+      return [sessionID, ...descendants.flat()]
+    })
+
+    const hasPendingQuestionInSessionTree = Effect.fn("SessionPrompt.hasPendingQuestionInSessionTree")(function* (
+      sessionID: SessionID,
+    ) {
+      const ids = new Set(yield* sessionTreeIDs(sessionID))
+      return (yield* question.list()).some((item) => ids.has(item.sessionID))
+    })
+
     const goalGate: (input: {
       sessionID: SessionID
       msgs: SessionV1.WithParts[]
@@ -1150,6 +1169,10 @@ export const layer = Layer.effect(
     }) {
       const active = yield* goalSvc.get(input.sessionID)
       if (!active) return true
+      if (yield* hasPendingQuestionInSessionTree(input.sessionID)) {
+        yield* Effect.logInfo("goal gate paused for pending question", { "session.id": input.sessionID })
+        return true
+      }
 
       const cfg = yield* config.get()
       const maxReact = cfg.goal?.maxReact ?? MAX_GOAL_REACT
@@ -1702,6 +1725,7 @@ export const defaultLayer = Layer.suspend(() =>
         RuntimeFlags.defaultLayer,
         EventV2Bridge.defaultLayer,
         Goal.defaultLayer,
+        Question.defaultLayer,
       ),
     ),
   ),
@@ -1820,6 +1844,7 @@ export const node = LayerNode.make(layer, [
   Plugin.node,
   Command.node,
   Goal.node,
+  Question.node,
   Config.node,
   Permission.node,
   FSUtil.node,

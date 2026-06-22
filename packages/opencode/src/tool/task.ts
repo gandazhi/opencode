@@ -10,6 +10,7 @@ import { Agent } from "../agent/agent"
 import { deriveSubagentSessionPermission } from "../agent/subagent-permissions"
 import type { SessionPrompt } from "../session/prompt"
 import { Config } from "@/config/config"
+import { Question } from "@/question"
 import { Effect, Exit, Schema, Scope } from "effect"
 import { EffectBridge } from "@/effect/bridge"
 import { RuntimeFlags } from "@/effect/runtime-flags"
@@ -85,6 +86,7 @@ export const TaskTool = Tool.define(
     const background = yield* BackgroundJob.Service
     const config = yield* Config.Service
     const sessions = yield* Session.Service
+    const question = yield* Question.Service
     const scope = yield* Scope.Scope
     const flags = yield* RuntimeFlags.Service
     const database = yield* Database.Service
@@ -295,9 +297,31 @@ export const TaskTool = Tool.define(
 
       const runCancel = yield* EffectBridge.make()
       const cancel = ops.cancel(nextSession.id)
+      const sessionTreeIDs: (sessionID: SessionID) => Effect.Effect<ReadonlyArray<SessionID>> = Effect.fn(
+        "TaskTool.sessionTreeIDs",
+      )(function* (sessionID) {
+        const children = yield* sessions.children(sessionID)
+        const descendants = yield* Effect.forEach(children, (child) => sessionTreeIDs(child.id), {
+          concurrency: "unbounded",
+        })
+        return [sessionID, ...descendants.flat()]
+      })
+      const hasPendingQuestion = Effect.fn("TaskTool.hasPendingQuestion")(function* () {
+        const ids = new Set(yield* sessionTreeIDs(nextSession.id))
+        return (yield* question.list()).some((item) => ids.has(item.sessionID))
+      })
+      const promotePendingQuestion = Effect.fn("TaskTool.promotePendingQuestion")(function* () {
+        if (!(yield* hasPendingQuestion())) return false
+        return (yield* background.promote(nextSession.id)) !== undefined
+      })
 
       function onAbort() {
-        runCancel.fork(cancel)
+        runCancel.fork(
+          Effect.gen(function* () {
+            if (yield* promotePendingQuestion()) return
+            yield* cancel
+          }),
+        )
       }
 
       return yield* Effect.acquireUseRelease(
@@ -321,8 +345,9 @@ export const TaskTool = Tool.define(
           }),
         (_, exit) =>
           Effect.gen(function* () {
-            if (Exit.hasInterrupts(exit))
-              yield* Effect.all([cancel, background.cancel(nextSession.id)], { discard: true })
+            if (!Exit.hasInterrupts(exit)) return
+            if (yield* promotePendingQuestion()) return
+            yield* Effect.all([cancel, background.cancel(nextSession.id)], { discard: true })
           }).pipe(
             Effect.ensuring(
               Effect.sync(() => {

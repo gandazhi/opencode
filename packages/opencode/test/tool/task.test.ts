@@ -13,13 +13,14 @@ import type { SessionPrompt } from "../../src/session/prompt"
 import { MessageID, PartID, SessionID } from "../../src/session/schema"
 import { SessionRunState } from "@/session/run-state"
 import { SessionStatus } from "@/session/status"
+import { Question } from "@/question"
 
 import { TaskTool, type TaskPromptOps } from "../../src/tool/task"
 import { Truncate } from "@/tool/truncate"
 import { ToolRegistry } from "@/tool/registry"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 import { disposeAllInstances } from "../fixture/fixture"
-import { testEffect } from "../lib/effect"
+import { awaitWithTimeout, pollWithTimeout, testEffect } from "../lib/effect"
 import { ProviderV2 } from "@opencode-ai/core/provider"
 import { ModelV2 } from "@opencode-ai/core/model"
 
@@ -42,6 +43,7 @@ const layer = (flags: Partial<RuntimeFlags.Info> = {}) =>
     Session.defaultLayer,
     SessionRunState.defaultLayer,
     SessionStatus.defaultLayer,
+    Question.defaultLayer,
     Truncate.defaultLayer,
     ToolRegistry.defaultLayer,
     Database.defaultLayer,
@@ -341,6 +343,182 @@ describe("tool.task", () => {
 
       const exit = yield* Fiber.await(fiber)
       expect(Exit.isSuccess(exit)).toBe(true)
+    }),
+  )
+
+  it.instance("aborted foreground task keeps a child waiting on a question alive", () =>
+    Effect.gen(function* () {
+      const jobs = yield* BackgroundJob.Service
+      const question = yield* Question.Service
+      const { chat, assistant } = yield* seed()
+      const tool = yield* TaskTool
+      const def = yield* tool.init()
+      const abort = new AbortController()
+      const promptStarted = yield* Deferred.make<SessionID>()
+      const parentInjected = yield* Deferred.make<SessionPrompt.PromptInput>()
+      const promptOps: TaskPromptOps = {
+        cancel: (sessionID) => jobs.cancel(sessionID).pipe(Effect.asVoid),
+        resolvePromptParts: (template) => Effect.succeed([{ type: "text" as const, text: template }]),
+        prompt: (input) =>
+          Effect.gen(function* () {
+            if (input.sessionID === chat.id) {
+              yield* Deferred.succeed(parentInjected, input)
+              return reply(input, "parent notified")
+            }
+            yield* Deferred.succeed(promptStarted, input.sessionID)
+            const answers = yield* question
+              .ask({
+                sessionID: input.sessionID,
+                questions: [
+                  {
+                    question: "Continue with Chinese output?",
+                    header: "Language",
+                    options: [{ label: "Chinese", description: "Use Chinese for the rest of the task" }],
+                  },
+                ],
+              })
+              .pipe(Effect.orDie)
+            return reply(input, answers[0]?.[0] ?? "unanswered")
+          }),
+      }
+
+      const fiber = yield* def
+        .execute(
+          {
+            description: "inspect bug",
+            prompt: "look into the cache key path",
+            subagent_type: "general",
+          },
+          {
+            sessionID: chat.id,
+            messageID: assistant.id,
+            agent: "build",
+            abort: abort.signal,
+            extra: { promptOps },
+            messages: [],
+            metadata: () => Effect.void,
+            ask: () => Effect.void,
+          },
+        )
+        .pipe(Effect.forkChild)
+
+      const childSessionID = yield* awaitWithTimeout(
+        Deferred.await(promptStarted),
+        "timed out waiting for task prompt to start",
+      )
+      const request = yield* pollWithTimeout(
+        Effect.gen(function* () {
+          return (yield* question.list()).find((item) => item.sessionID === childSessionID)
+        }),
+        "timed out waiting for child question",
+      )
+
+      abort.abort()
+      const result = yield* awaitWithTimeout(Fiber.join(fiber), "timed out waiting for task abort promotion")
+
+      expect(result.metadata.background).toBe(true)
+      expect((yield* jobs.get(childSessionID))?.status).toBe("running")
+      expect((yield* question.list()).some((item) => item.id === request.id)).toBe(true)
+
+      yield* question.reply({ requestID: request.id, answers: [["Chinese"]] })
+      const waited = yield* jobs.wait({ id: childSessionID, timeout: 1_000 })
+      expect(waited.info?.status).toBe("completed")
+      expect(waited.info?.output).toBe("Chinese")
+      const injected = yield* awaitWithTimeout(
+        Deferred.await(parentInjected),
+        "timed out waiting for parent background notification",
+      )
+      expect(injected.parts[0]?.type).toBe("text")
+      if (injected.parts[0]?.type === "text") expect(injected.parts[0].text).toContain("Chinese")
+    }),
+  )
+
+  it.instance("aborted foreground task keeps a child alive when a descendant is waiting on a question", () =>
+    Effect.gen(function* () {
+      const jobs = yield* BackgroundJob.Service
+      const question = yield* Question.Service
+      const sessions = yield* Session.Service
+      const { chat, assistant } = yield* seed()
+      const tool = yield* TaskTool
+      const def = yield* tool.init()
+      const abort = new AbortController()
+      const promptStarted = yield* Deferred.make<SessionID>()
+      const parentInjected = yield* Deferred.make<SessionPrompt.PromptInput>()
+      const promptOps: TaskPromptOps = {
+        cancel: (sessionID) => jobs.cancel(sessionID).pipe(Effect.asVoid),
+        resolvePromptParts: (template) => Effect.succeed([{ type: "text" as const, text: template }]),
+        prompt: (input) =>
+          Effect.gen(function* () {
+            if (input.sessionID === chat.id) {
+              yield* Deferred.succeed(parentInjected, input)
+              return reply(input, "parent notified")
+            }
+            yield* Deferred.succeed(promptStarted, input.sessionID)
+            const grandchild = yield* sessions.create({ parentID: input.sessionID, title: "Question grandchild" })
+            const answers = yield* question
+              .ask({
+                sessionID: grandchild.id,
+                questions: [
+                  {
+                    question: "Continue from nested task?",
+                    header: "Nested",
+                    options: [{ label: "Continue", description: "Keep the nested task running" }],
+                  },
+                ],
+              })
+              .pipe(Effect.orDie)
+            return reply(input, answers[0]?.[0] ?? "unanswered")
+          }),
+      }
+
+      const fiber = yield* def
+        .execute(
+          {
+            description: "inspect nested bug",
+            prompt: "look into the nested cache key path",
+            subagent_type: "general",
+          },
+          {
+            sessionID: chat.id,
+            messageID: assistant.id,
+            agent: "build",
+            abort: abort.signal,
+            extra: { promptOps },
+            messages: [],
+            metadata: () => Effect.void,
+            ask: () => Effect.void,
+          },
+        )
+        .pipe(Effect.forkChild)
+
+      const childSessionID = yield* awaitWithTimeout(
+        Deferred.await(promptStarted),
+        "timed out waiting for task prompt to start",
+      )
+      const request = yield* pollWithTimeout(
+        Effect.gen(function* () {
+          return (yield* question.list()).find((item) => item.sessionID !== childSessionID)
+        }),
+        "timed out waiting for descendant question",
+      )
+
+      abort.abort()
+      const result = yield* awaitWithTimeout(Fiber.join(fiber), "timed out waiting for task abort promotion")
+
+      expect(result.metadata.background).toBe(true)
+      expect((yield* jobs.get(childSessionID))?.status).toBe("running")
+      expect((yield* question.list()).some((item) => item.id === request.id)).toBe(true)
+
+      yield* question.reply({ requestID: request.id, answers: [["Continue"]] })
+      const waited = yield* jobs.wait({ id: childSessionID, timeout: 1_000 })
+      expect(waited.info?.status).toBe("completed")
+      expect(waited.info?.output).toBe("Continue")
+      const injected = yield* awaitWithTimeout(
+        Deferred.await(parentInjected),
+        "timed out waiting for parent background notification",
+      )
+      expect(injected.parts[0]?.type).toBe("text")
+      if (injected.parts[0]?.type === "text") expect(injected.parts[0].text).toContain("Continue")
     }),
   )
 
@@ -843,6 +1021,55 @@ describe("tool.task", () => {
       const waited = yield* jobs.wait({ id: result.metadata.sessionId, timeout: 1_000 })
       expect(waited.timedOut).toBe(false)
       expect(waited.info?.status).toBe("cancelled")
+    }),
+  )
+
+  it.instance("cancelling a parent run promotes a child job waiting on a question", () =>
+    Effect.gen(function* () {
+      const jobs = yield* BackgroundJob.Service
+      const question = yield* Question.Service
+      const runState = yield* SessionRunState.Service
+      const sessions = yield* Session.Service
+      const { chat } = yield* seed()
+      const child = yield* sessions.create({ parentID: chat.id, title: "Question child" })
+
+      yield* jobs.start({
+        id: child.id,
+        type: "task",
+        metadata: { parentSessionId: chat.id, sessionId: child.id },
+        run: Effect.gen(function* () {
+          const answers = yield* question
+            .ask({
+              sessionID: child.id,
+              questions: [
+                {
+                  question: "Continue nested work?",
+                  header: "Continue",
+                  options: [{ label: "Yes", description: "Keep the child task running" }],
+                },
+              ],
+            })
+            .pipe(Effect.orDie)
+          return answers[0]?.[0] ?? "unanswered"
+        }),
+      })
+      const request = yield* pollWithTimeout(
+        Effect.gen(function* () {
+          return (yield* question.list()).find((item) => item.sessionID === child.id)
+        }),
+        "timed out waiting for child question",
+      )
+
+      yield* runState.cancel(chat.id)
+
+      expect((yield* jobs.get(child.id))?.status).toBe("running")
+      expect((yield* jobs.get(child.id))?.metadata?.background).toBe(true)
+      expect((yield* question.list()).some((item) => item.id === request.id)).toBe(true)
+
+      yield* question.reply({ requestID: request.id, answers: [["Yes"]] })
+      const waited = yield* jobs.wait({ id: child.id, timeout: 1_000 })
+      expect(waited.info?.status).toBe("completed")
+      expect(waited.info?.output).toBe("Yes")
     }),
   )
 
