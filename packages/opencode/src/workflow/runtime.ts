@@ -930,21 +930,6 @@ export const layer = Layer.effect(
           yield* WorkflowPersistence.recordTerminal({ runID, status: "completed" }).pipe(Effect.ignore)
           yield* Deferred.succeed(deferred, { status: "completed", result: result.success })
           yield* events.publish(WorkflowFinished, { sessionID: input.sessionID, runID, status: "completed" })
-          const prompts = yield* SessionPrompt.Service
-          yield* prompts
-            .prompt({
-              sessionID: input.sessionID,
-              parts: [
-                {
-                  type: "text" as const,
-                  synthetic: true,
-                  text:
-                    `Workflow completed. run_id: ${runID}\n` +
-                    JSON.stringify(result.success ?? null).slice(0, 4000),
-                },
-              ],
-            })
-            .pipe(Effect.ignore)
           return
         }
         yield* reclaim(entry)
@@ -955,19 +940,6 @@ export const layer = Layer.effect(
         yield* WorkflowPersistence.recordTerminal({ runID, status: "failed", error }).pipe(Effect.ignore)
         yield* Deferred.succeed(deferred, { status: "failed", error })
         yield* events.publish(WorkflowFinished, { sessionID: input.sessionID, runID, status: "failed", error })
-        const prompts = yield* SessionPrompt.Service
-        yield* prompts
-          .prompt({
-            sessionID: input.sessionID,
-            parts: [
-              {
-                type: "text" as const,
-                synthetic: true,
-                text: `Workflow failed. run_id: ${runID}\nerror: ${error}`,
-              },
-            ],
-          })
-          .pipe(Effect.ignore)
       })
 
       entry.fiber = yield* work.pipe(Effect.forkIn(scope))

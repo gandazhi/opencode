@@ -1,4 +1,4 @@
-Execute a workflow script that orchestrates multiple subagents deterministically. The script is plain JavaScript that runs in a sandbox and fans out subagents via agent(), parallel(), and pipeline(). This tool returns immediately with a run_id and runs in the background; the result is delivered as a notification when the workflow completes.
+Execute a workflow script that orchestrates multiple subagents deterministically. The script is plain JavaScript that runs in a sandbox and fans out subagents via agent(), parallel(), and pipeline(). This tool returns immediately with a run_id and runs in the background; track progress in the Workflows view or use workflow wait/status with the run_id.
 
 Built-in workflows: "deep-research" (multi-source, fact-checked research report with adversarial cross-checking).
 

@@ -91,7 +91,7 @@ export const WorkflowTool = Tool.define<typeof parameters, Metadata, Config.Serv
         })
         return {
           title: "workflow started",
-          output: `Workflow started. run_id: ${started.runID}\nThe result will be delivered as a notification when complete.`,
+          output: `Workflow started. run_id: ${started.runID}\nTrack progress in the Workflows view or use workflow wait/status with this run_id.`,
           metadata: { runID: started.runID } satisfies Metadata,
         }
       }
