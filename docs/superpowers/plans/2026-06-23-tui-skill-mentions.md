@@ -1,62 +1,62 @@
-# TUI Skill Mentions Implementation Plan
+# TUI Skill Mention 实现计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **给 agentic worker：** 必需子技能：使用 superpowers:subagent-driven-development（推荐）或 superpowers:executing-plans 按任务逐个实现本计划。步骤使用 checkbox（`- [ ]`）语法跟踪进度。
 
-**Goal:** 在 opencode TUI prompt 中实现 Codex 风格的 `$skill` 补全、可见 mention、手动 `$skill-name` 解析，以及提交后自动加载 skill。
+**目标：** 在 opencode TUI prompt 中实现 Codex 风格的 `$skill` 补全、可见 mention、手写 `$skill-name` 解析，以及提交后自动加载 skill。
 
-**Architecture:** TUI 侧新增本地 `SkillPromptPart` 和 `$` autocomplete，提交时把补全选择与手写 `$skill-name` 合并成 `skills: string[]`。后端在 `SessionPrompt.PromptInput` 接收 `skills`，创建用户消息时把指定 skill 内容写入该用户消息的 `system` 字段，使当前 provider turn 自动携带完整 skill instructions。
+**架构：** TUI 侧新增本地 `SkillPromptPart` 和 `$` autocomplete，提交时把补全选择与手写 `$skill-name` 合并成 `skills: string[]`。后端在 `SessionPrompt.PromptInput` 接收 `skills`，创建用户消息时把指定 skill 内容写入该用户消息的 `system` 字段，使当前 provider turn 自动携带完整 skill instructions。
 
-**Tech Stack:** TypeScript, SolidJS, OpenTUI extmarks, Effect, Bun test, opencode v2 SDK generator.
-
----
-
-## File Structure
-
-- Create `packages/tui/src/prompt/skill.ts`
-  - Defines the local TUI `SkillPromptPart` shape.
-  - Extracts manually typed `$skill-name` tokens by exact known-skill names.
-  - Combines selected skill parts and manual tokens into a deduped list.
-- Modify `packages/tui/src/prompt/history.tsx`
-  - Allows `PromptInfo.parts` to retain local `SkillPromptPart` entries in drafts and history.
-- Create `packages/tui/test/prompt/skill.test.ts`
-  - Covers manual extraction, dedupe, unknown dollar tokens, and selected skill parts.
-- Modify `packages/tui/src/context/sync.tsx`
-  - Adds `sync.data.skill`.
-  - Bootstraps skills via `sdk.client.skill.skills({ workspace })`.
-- Modify `packages/tui/test/fixture/tui-sdk.ts`
-  - Adds default `/skill` response for TUI sync tests.
-- Create `packages/tui/test/context/sync-skill.test.tsx`
-  - Proves TUI sync bootstraps skill metadata.
-- Modify `packages/tui/src/component/prompt/autocomplete.tsx`
-  - Adds `$` as an autocomplete trigger.
-  - Displays skill candidates and inserts extmark-backed skill mentions.
-- Modify `packages/tui/src/component/prompt/index.tsx`
-  - Adds skill extmark styling and persistence through restore/sync.
-  - Excludes skill parts from backend `parts`.
-  - Sends `skills` on normal prompt submission.
-- Modify `packages/tui/src/theme/index.ts`
-  - Adds `extmark.skill` syntax style.
-- Modify `packages/opencode/src/session/prompt.ts`
-  - Adds `skills` to `PromptInput`.
-  - Loads explicit skill contents into the user message `system` field.
-  - Adds `Skill.defaultLayer` and `Skill.node` dependencies.
-- Modify `packages/opencode/test/session/prompt.test.ts`
-  - Covers explicit skill loading, missing skill failure, and permission denial.
-- Regenerate `packages/sdk/js/src/v2/gen/*`
-  - Picks up the new `skills?: string[]` prompt payload field.
+**技术栈：** TypeScript、SolidJS、OpenTUI extmarks、Effect、Bun test、opencode v2 SDK generator。
 
 ---
 
-### Task 1: TUI Skill Prompt Utilities
+## 文件结构
 
-**Files:**
-- Create: `packages/tui/src/prompt/skill.ts`
-- Modify: `packages/tui/src/prompt/history.tsx`
-- Test: `packages/tui/test/prompt/skill.test.ts`
+- 新建 `packages/tui/src/prompt/skill.ts`
+  - 定义 TUI 本地的 `SkillPromptPart` 形状。
+  - 按已知 skill 名精确提取手写 `$skill-name` token。
+  - 把补全选择的 skill part 与手写 token 合并去重。
+- 修改 `packages/tui/src/prompt/history.tsx`
+  - 让 `PromptInfo.parts` 在 draft 和 history 中保留本地 `SkillPromptPart` 条目。
+- 新建 `packages/tui/test/prompt/skill.test.ts`
+  - 覆盖手写提取、去重、未知 dollar token、以及补全选择的 skill parts。
+- 修改 `packages/tui/src/context/sync.tsx`
+  - 新增 `sync.data.skill`。
+  - 通过 `sdk.client.skill.skills({ workspace })` 拉取 skill 列表。
+- 修改 `packages/tui/test/fixture/tui-sdk.ts`
+  - 为 TUI sync 测试新增默认的 `/skill` 响应。
+- 新建 `packages/tui/test/context/sync-skill.test.tsx`
+  - 验证 TUI sync 会拉取 skill 元数据。
+- 修改 `packages/tui/src/component/prompt/autocomplete.tsx`
+  - 把 `$` 加为 autocomplete trigger。
+  - 展示 skill 候选项，并插入由 extmark 支撑的 skill mention。
+- 修改 `packages/tui/src/component/prompt/index.tsx`
+  - 新增 skill extmark 样式，并在 restore/sync 中持久化。
+  - 把 skill part 从发给后端的 `parts` 中排除。
+  - 普通 prompt 提交时发送 `skills`。
+- 修改 `packages/tui/src/theme/index.ts`
+  - 新增 `extmark.skill` 语法样式。
+- 修改 `packages/opencode/src/session/prompt.ts`
+  - 给 `PromptInput` 新增 `skills`。
+  - 把显式 skill 内容加载进用户消息的 `system` 字段。
+  - 新增 `Skill.defaultLayer` 与 `Skill.node` 依赖。
+- 修改 `packages/opencode/test/session/prompt.test.ts`
+  - 覆盖显式 skill 加载、缺失 skill 失败、权限拒绝。
+- 重新生成 `packages/sdk/js/src/v2/gen/*`
+  - 拾取新增的 `skills?: string[]` prompt payload 字段。
 
-- [ ] **Step 1: Write the failing tests**
+---
 
-Create `packages/tui/test/prompt/skill.test.ts`:
+### 任务 1：TUI Skill Prompt 工具模块
+
+**文件：**
+- 新建：`packages/tui/src/prompt/skill.ts`
+- 修改：`packages/tui/src/prompt/history.tsx`
+- 测试：`packages/tui/test/prompt/skill.test.ts`
+
+- [ ] **步骤 1：编写失败测试**
+
+新建 `packages/tui/test/prompt/skill.test.ts`：
 
 ```ts
 import { describe, expect, test } from "bun:test"
@@ -104,20 +104,20 @@ describe("prompt skill mentions", () => {
 })
 ```
 
-- [ ] **Step 2: Run the new test and verify it fails**
+- [ ] **步骤 2：运行新测试并确认失败**
 
-Run:
+运行：
 
 ```bash
 cd packages/tui
 bun test test/prompt/skill.test.ts --timeout 30000
 ```
 
-Expected: FAIL because `../../src/prompt/skill` does not exist.
+预期：FAIL，因为 `../../src/prompt/skill` 不存在。
 
-- [ ] **Step 3: Add the TUI skill utility module**
+- [ ] **步骤 3：新增 TUI skill 工具模块**
 
-Create `packages/tui/src/prompt/skill.ts`:
+新建 `packages/tui/src/prompt/skill.ts`：
 
 ```ts
 export type SkillInfo = {
@@ -190,38 +190,38 @@ export function collectPromptSkillNames(input: {
 }
 ```
 
-- [ ] **Step 4: Allow skill parts in prompt history**
+- [ ] **步骤 4：允许 history 中出现 skill part**
 
-Modify `packages/tui/src/prompt/history.tsx`.
+修改 `packages/tui/src/prompt/history.tsx`。
 
-Add the import:
+新增 import：
 
 ```ts
 import type { SkillPromptPart } from "./skill"
 ```
 
-Add `SkillPromptPart` to the `PromptInfo.parts` union:
+把 `SkillPromptPart` 加入 `PromptInfo.parts` 联合类型：
 
 ```ts
     | SkillPromptPart
 ```
 
-The resulting `parts` union includes file parts, agent parts, text parts with pasted-text source, and `SkillPromptPart`.
+最终的 `parts` 联合类型包含 file part、agent part、带 pasted-text source 的 text part，以及 `SkillPromptPart`。
 
-- [ ] **Step 5: Run the prompt skill tests**
+- [ ] **步骤 5：运行 prompt skill 测试**
 
-Run:
+运行：
 
 ```bash
 cd packages/tui
 bun test test/prompt/skill.test.ts --timeout 30000
 ```
 
-Expected: PASS.
+预期：PASS。
 
-- [ ] **Step 6: Commit**
+- [ ] **步骤 6：提交**
 
-Run:
+运行：
 
 ```bash
 git add packages/tui/src/prompt/skill.ts packages/tui/src/prompt/history.tsx packages/tui/test/prompt/skill.test.ts
@@ -230,16 +230,16 @@ git commit -m "feat(tui): add skill mention parsing"
 
 ---
 
-### Task 2: Sync Skill Metadata Into TUI
+### 任务 2：把 Skill 元数据同步进 TUI
 
-**Files:**
-- Modify: `packages/tui/src/context/sync.tsx`
-- Modify: `packages/tui/test/fixture/tui-sdk.ts`
-- Test: `packages/tui/test/context/sync-skill.test.tsx`
+**文件：**
+- 修改：`packages/tui/src/context/sync.tsx`
+- 修改：`packages/tui/test/fixture/tui-sdk.ts`
+- 测试：`packages/tui/test/context/sync-skill.test.tsx`
 
-- [ ] **Step 1: Write the failing sync test**
+- [ ] **步骤 1：编写失败的 sync 测试**
 
-Create `packages/tui/test/context/sync-skill.test.tsx`:
+新建 `packages/tui/test/context/sync-skill.test.tsx`：
 
 ```tsx
 /** @jsxImportSource @opentui/solid */
@@ -276,48 +276,48 @@ describe("Sync skills", () => {
 })
 ```
 
-- [ ] **Step 2: Run the sync test and verify it fails**
+- [ ] **步骤 2：运行 sync 测试并确认失败**
 
-Run:
+运行：
 
 ```bash
 cd packages/tui
 bun test test/context/sync-skill.test.tsx --timeout 30000
 ```
 
-Expected: FAIL because `sync.data.skill` is not defined.
+预期：FAIL，因为 `sync.data.skill` 未定义。
 
-- [ ] **Step 3: Add `skill` to the TUI sync store**
+- [ ] **步骤 3：给 TUI sync store 新增 `skill`**
 
-Modify the type import in `packages/tui/src/context/sync.tsx`:
+修改 `packages/tui/src/context/sync.tsx` 中的类型 import：
 
 ```ts
   AppSkillsResponse,
 ```
 
-Add this field next to `command: Command[]` in the store type:
+在 store 类型中、`command: Command[]` 旁边新增字段：
 
 ```ts
       skill: AppSkillsResponse
 ```
 
-Add this initial state next to `command: []`:
+在初始 state 中、`command: []` 旁边新增：
 
 ```ts
       skill: [],
 ```
 
-Add this non-blocking bootstrap request next to the existing `sdk.client.command.list({ workspace })` request:
+在现有 `sdk.client.command.list({ workspace })` 请求旁新增非阻塞的 bootstrap 请求：
 
 ```ts
             sdk.client.skill.skills({ workspace }).then((x) => setStore("skill", reconcile(x.data ?? []))),
 ```
 
-- [ ] **Step 4: Update the TUI SDK test fixture**
+- [ ] **步骤 4：更新 TUI SDK 测试 fixture**
 
-Modify `packages/tui/test/fixture/tui-sdk.ts` so `/skill` returns an empty array by default.
+修改 `packages/tui/test/fixture/tui-sdk.ts`，让 `/skill` 默认返回空数组。
 
-Change the route array:
+修改路由数组：
 
 ```ts
       [
@@ -331,20 +331,20 @@ Change the route array:
       ].includes(url.pathname)
 ```
 
-- [ ] **Step 5: Run the sync test**
+- [ ] **步骤 5：运行 sync 测试**
 
-Run:
+运行：
 
 ```bash
 cd packages/tui
 bun test test/context/sync-skill.test.tsx --timeout 30000
 ```
 
-Expected: PASS.
+预期：PASS。
 
-- [ ] **Step 6: Commit**
+- [ ] **步骤 6：提交**
 
-Run:
+运行：
 
 ```bash
 git add packages/tui/src/context/sync.tsx packages/tui/test/fixture/tui-sdk.ts packages/tui/test/context/sync-skill.test.tsx
@@ -353,17 +353,17 @@ git commit -m "feat(tui): sync skill metadata"
 
 ---
 
-### Task 3: Add `$` Autocomplete And Skill Extmarks
+### 任务 3：新增 `$` Autocomplete 与 Skill Extmark
 
-**Files:**
-- Modify: `packages/tui/src/component/prompt/autocomplete.tsx`
-- Modify: `packages/tui/src/component/prompt/index.tsx`
-- Modify: `packages/tui/src/theme/index.ts`
-- Test: `packages/tui/test/prompt/skill.test.ts`
+**文件：**
+- 修改：`packages/tui/src/component/prompt/autocomplete.tsx`
+- 修改：`packages/tui/src/component/prompt/index.tsx`
+- 修改：`packages/tui/src/theme/index.ts`
+- 测试：`packages/tui/test/prompt/skill.test.ts`
 
-- [ ] **Step 1: Extend the utility test for skill mention source ranges**
+- [ ] **步骤 1：扩展工具模块测试，覆盖 skill mention 的 source 区间**
 
-Append this test to `packages/tui/test/prompt/skill.test.ts`:
+在 `packages/tui/test/prompt/skill.test.ts` 末尾追加：
 
 ```ts
   test("keeps selected skill prompt part source as visible dollar text", () => {
@@ -382,20 +382,20 @@ Append this test to `packages/tui/test/prompt/skill.test.ts`:
   })
 ```
 
-- [ ] **Step 2: Run the utility test**
+- [ ] **步骤 2：运行工具模块测试**
 
-Run:
+运行：
 
 ```bash
 cd packages/tui
 bun test test/prompt/skill.test.ts --timeout 30000
 ```
 
-Expected: PASS. This locks the local part shape before wiring it into the UI.
+预期：PASS。这把本地 part 形状锁住，再接入 UI。
 
-- [ ] **Step 3: Add the skill extmark style**
+- [ ] **步骤 3：新增 skill extmark 样式**
 
-Modify `packages/tui/src/theme/index.ts` near the existing `extmark.file`, `extmark.agent`, and `extmark.paste` scopes:
+修改 `packages/tui/src/theme/index.ts`，在现有 `extmark.file`、`extmark.agent`、`extmark.paste` scope 旁新增：
 
 ```ts
     {
@@ -407,11 +407,11 @@ Modify `packages/tui/src/theme/index.ts` near the existing `extmark.file`, `extm
     },
 ```
 
-- [ ] **Step 4: Extend autocomplete types and props**
+- [ ] **步骤 4：扩展 autocomplete 的类型与 props**
 
-Modify `packages/tui/src/component/prompt/autocomplete.tsx`.
+修改 `packages/tui/src/component/prompt/autocomplete.tsx`。
 
-Change `AutocompleteRef`:
+修改 `AutocompleteRef`：
 
 ```ts
 export type AutocompleteRef = {
@@ -420,19 +420,19 @@ export type AutocompleteRef = {
 }
 ```
 
-Add this import:
+新增 import：
 
 ```ts
 import type { SkillPromptPart } from "../../prompt/skill"
 ```
 
-Add this prop:
+新增 prop：
 
 ```ts
   skillStyleId: number
 ```
 
-Change `show`:
+修改 `show`：
 
 ```ts
   function show(mode: "@" | "/" | "$") {
@@ -443,9 +443,9 @@ Change `show`:
   }
 ```
 
-- [ ] **Step 5: Add skill insertion to autocomplete**
+- [ ] **步骤 5：在 autocomplete 中加入 skill 插入逻辑**
 
-Add this function in `packages/tui/src/component/prompt/autocomplete.tsx` below `insertPart`:
+在 `packages/tui/src/component/prompt/autocomplete.tsx` 的 `insertPart` 下方新增函数：
 
 ```ts
   function insertSkill(name: string) {
@@ -490,9 +490,9 @@ Add this function in `packages/tui/src/component/prompt/autocomplete.tsx` below 
   }
 ```
 
-- [ ] **Step 6: Add skill autocomplete options**
+- [ ] **步骤 6：新增 skill autocomplete 候选项**
 
-Add this memo in `packages/tui/src/component/prompt/autocomplete.tsx` near `commands`:
+在 `packages/tui/src/component/prompt/autocomplete.tsx` 的 `commands` 旁新增 memo：
 
 ```ts
   const skills = createMemo((): AutocompleteOption[] =>
@@ -507,7 +507,7 @@ Add this memo in `packages/tui/src/component/prompt/autocomplete.tsx` near `comm
   )
 ```
 
-Modify `options` so non-file options are selected by trigger:
+修改 `options`，让非文件候选项按 trigger 选择：
 
 ```ts
     const nonFileOptions: AutocompleteOption[] =
@@ -518,15 +518,15 @@ Modify `options` so non-file options are selected by trigger:
           : [...commandsValue]
 ```
 
-Keep the existing `description` fuzzy key active for `/` only:
+保留现有只在 `/` 下启用 `description` fuzzy key 的行为：
 
 ```ts
           ...(store.visible === "/" ? ["description" as const] : []),
 ```
 
-- [ ] **Step 7: Add `$` trigger detection**
+- [ ] **步骤 7：新增 `$` trigger 检测**
 
-In the `onInput(value)` function passed to `props.ref`, after slash detection and before `@` detection, add:
+在传给 `props.ref` 的 `onInput(value)` 函数中，slash 检测之后、`@` 检测之前，新增：
 
 ```ts
         const dollarIndex = value.slice(0, offset).search(/\$[^\s$]*$/)
@@ -537,19 +537,19 @@ In the `onInput(value)` function passed to `props.ref`, after slash detection an
         }
 ```
 
-Do not change shell mode here; `Prompt` only calls autocomplete while normal prompt traits allow it.
+这里不改 shell mode；`Prompt` 只在普通 prompt 特性允许时才调用 autocomplete。
 
-- [ ] **Step 8: Wire skill extmarks through prompt index**
+- [ ] **步骤 8：把 skill extmark 接入 prompt index**
 
-Modify `packages/tui/src/component/prompt/index.tsx`.
+修改 `packages/tui/src/component/prompt/index.tsx`。
 
-Add the style id next to existing extmark styles:
+在现有 extmark 样式旁新增 style id：
 
 ```ts
   const skillStyleId = syntax().getStyleId("extmark.skill") ?? agentStyleId
 ```
 
-In `restoreExtmarksFromParts`, add:
+在 `restoreExtmarksFromParts` 中新增：
 
 ```ts
       } else if (part.type === "skill") {
@@ -559,7 +559,7 @@ In `restoreExtmarksFromParts`, add:
         styleId = skillStyleId
 ```
 
-In `syncExtmarksWithPromptParts`, add:
+在 `syncExtmarksWithPromptParts` 中新增：
 
 ```ts
               } else if (part.type === "skill") {
@@ -567,26 +567,26 @@ In `syncExtmarksWithPromptParts`, add:
                 part.source.end = extmark.end
 ```
 
-Pass the prop into `<Autocomplete />`:
+把 prop 传入 `<Autocomplete />`：
 
 ```tsx
         skillStyleId={skillStyleId}
 ```
 
-- [ ] **Step 9: Run TUI typecheck**
+- [ ] **步骤 9：运行 TUI typecheck**
 
-Run:
+运行：
 
 ```bash
 cd packages/tui
 bun typecheck
 ```
 
-Expected: PASS.
+预期：PASS。
 
-- [ ] **Step 10: Commit**
+- [ ] **步骤 10：提交**
 
-Run:
+运行：
 
 ```bash
 git add packages/tui/src/component/prompt/autocomplete.tsx packages/tui/src/component/prompt/index.tsx packages/tui/src/theme/index.ts packages/tui/test/prompt/skill.test.ts
@@ -595,15 +595,15 @@ git commit -m "feat(tui): add skill mention autocomplete"
 
 ---
 
-### Task 4: Send Explicit Skills On Prompt Submit
+### 任务 4：提交 prompt 时发送显式 skills
 
-**Files:**
-- Modify: `packages/tui/src/component/prompt/index.tsx`
-- Test: `packages/tui/test/prompt/skill.test.ts`
+**文件：**
+- 修改：`packages/tui/src/component/prompt/index.tsx`
+- 测试：`packages/tui/test/prompt/skill.test.ts`
 
-- [ ] **Step 1: Extend utility tests for backend request filtering**
+- [ ] **步骤 1：扩展工具模块测试，覆盖后端请求过滤**
 
-Append this test to `packages/tui/test/prompt/skill.test.ts`:
+在 `packages/tui/test/prompt/skill.test.ts` 末尾追加：
 
 ```ts
   test("collects only known skill names for backend payload", () => {
@@ -624,28 +624,28 @@ Append this test to `packages/tui/test/prompt/skill.test.ts`:
   })
 ```
 
-- [ ] **Step 2: Run utility tests**
+- [ ] **步骤 2：运行工具模块测试**
 
-Run:
+运行：
 
 ```bash
 cd packages/tui
 bun test test/prompt/skill.test.ts --timeout 30000
 ```
 
-Expected: PASS.
+预期：PASS。
 
-- [ ] **Step 3: Import skill collection in prompt index**
+- [ ] **步骤 3：在 prompt index 中 import skill 收集函数**
 
-Modify `packages/tui/src/component/prompt/index.tsx`:
+修改 `packages/tui/src/component/prompt/index.tsx`：
 
 ```ts
 import { collectPromptSkillNames } from "../../prompt/skill"
 ```
 
-- [ ] **Step 4: Collect skills and exclude local skill parts from backend parts**
+- [ ] **步骤 4：收集 skills，并把本地 skill part 从后端 parts 中排除**
 
-In `submitInner`, after `nonTextParts` is defined, add:
+在 `submitInner` 中、`nonTextParts` 定义之后，新增：
 
 ```ts
     const promptSkills = collectPromptSkillNames({
@@ -656,13 +656,13 @@ In `submitInner`, after `nonTextParts` is defined, add:
     const requestParts = nonTextParts.filter((part) => part.type !== "skill")
 ```
 
-In the command branch, keep sending only file parts:
+在 command 分支中，仍只发送 file part：
 
 ```ts
         parts: requestParts.filter((x) => x.type === "file"),
 ```
 
-In the normal prompt branch, replace `...nonTextParts` with `...requestParts` and add `skills`:
+在普通 prompt 分支中，把 `...nonTextParts` 替换成 `...requestParts`，并新增 `skills`：
 
 ```ts
             skills: promptSkills,
@@ -676,9 +676,9 @@ In the normal prompt branch, replace `...nonTextParts` with `...requestParts` an
             ],
 ```
 
-- [ ] **Step 5: Run focused tests and typecheck**
+- [ ] **步骤 5：运行聚焦测试与 typecheck**
 
-Run:
+运行：
 
 ```bash
 cd packages/tui
@@ -686,11 +686,11 @@ bun test test/prompt/skill.test.ts --timeout 30000
 bun typecheck
 ```
 
-Expected: both PASS.
+预期：两者都 PASS。
 
-- [ ] **Step 6: Commit**
+- [ ] **步骤 6：提交**
 
-Run:
+运行：
 
 ```bash
 git add packages/tui/src/component/prompt/index.tsx packages/tui/test/prompt/skill.test.ts
@@ -699,15 +699,15 @@ git commit -m "feat(tui): send selected skills with prompts"
 
 ---
 
-### Task 5: Backend Prompt Auto-Loads Explicit Skills
+### 任务 5：后端 Prompt 自动加载显式 skills
 
-**Files:**
-- Modify: `packages/opencode/src/session/prompt.ts`
-- Test: `packages/opencode/test/session/prompt.test.ts`
+**文件：**
+- 修改：`packages/opencode/src/session/prompt.ts`
+- 测试：`packages/opencode/test/session/prompt.test.ts`
 
-- [ ] **Step 1: Write backend tests**
+- [ ] **步骤 1：编写后端测试**
 
-Append these tests near the other prompt/loop provider request tests in `packages/opencode/test/session/prompt.test.ts`:
+在 `packages/opencode/test/session/prompt.test.ts` 中、其它 prompt/loop provider request 测试旁追加：
 
 ```ts
 it.instance("prompt loads explicit skills into the next provider request", () =>
@@ -819,40 +819,40 @@ noLLMServer.instance("prompt fails clearly when an explicit skill is denied", ()
 )
 ```
 
-- [ ] **Step 2: Run backend tests and verify they fail**
+- [ ] **步骤 2：运行后端测试并确认失败**
 
-Run:
+运行：
 
 ```bash
 cd packages/opencode
 bun test test/session/prompt.test.ts --timeout 30000
 ```
 
-Expected: FAIL because `PromptInput` does not accept `skills` and explicit skills are not loaded.
+预期：FAIL，因为 `PromptInput` 不接受 `skills`，且显式 skills 未被加载。
 
-- [ ] **Step 3: Add the Skill service dependency**
+- [ ] **步骤 3：新增 Skill 服务依赖**
 
-Modify `packages/opencode/src/session/prompt.ts`.
+修改 `packages/opencode/src/session/prompt.ts`。
 
-Add the import:
+新增 import：
 
 ```ts
 import { Skill } from "../skill"
 ```
 
-Inside the `Layer.effect` body, add:
+在 `Layer.effect` body 内新增：
 
 ```ts
     const skillSvc = yield* Skill.Service
 ```
 
-Add `Layer.provide(Skill.defaultLayer)` to `defaultLayer` near `Command.defaultLayer`.
+在 `defaultLayer` 中、`Command.defaultLayer` 旁新增 `Layer.provide(Skill.defaultLayer)`。
 
-Add `Skill.node` to the `node` dependency array near `Command.node`.
+在 `node` 依赖数组中、`Command.node` 旁新增 `Skill.node`。
 
-- [ ] **Step 4: Add loaded skill formatting and permission checks**
+- [ ] **步骤 4：新增已加载 skill 的格式化与权限检查**
 
-Add these helpers above the `export const layer = Layer.effect` declaration:
+在 `export const layer = Layer.effect` 声明上方新增这些 helper：
 
 ```ts
 function explicitSkillSystem(info: Skill.Info) {
@@ -876,7 +876,7 @@ function mergeSystemParts(parts: Array<string | undefined>) {
 }
 ```
 
-Inside the layer, add this effect helper before `createUserMessage`:
+在 layer 内、`createUserMessage` 之前新增这个 effect helper：
 
 ```ts
     const loadExplicitSkills = Effect.fn("SessionPrompt.loadExplicitSkills")(function* (input: {
@@ -910,9 +910,9 @@ Inside the layer, add this effect helper before `createUserMessage`:
     })
 ```
 
-- [ ] **Step 5: Store loaded skills on the user message system field**
+- [ ] **步骤 5：把已加载 skills 写进用户消息的 system 字段**
 
-In `createUserMessage`, after `variant` is computed and before the `SessionV1.User` object is created, add:
+在 `createUserMessage` 中、`variant` 计算之后、`SessionV1.User` 对象创建之前，新增：
 
 ```ts
       const explicitSkills = yield* loadExplicitSkills({
@@ -922,34 +922,34 @@ In `createUserMessage`, after `variant` is computed and before the `SessionV1.Us
       })
 ```
 
-Change the `system` property in `info`:
+修改 `info` 中的 `system` 属性：
 
 ```ts
         system: mergeSystemParts([input.system, explicitSkills]),
 ```
 
-- [ ] **Step 6: Extend the PromptInput schema**
+- [ ] **步骤 6：扩展 PromptInput schema**
 
-In `packages/opencode/src/session/prompt.ts`, add `skills` to `PromptInput`:
+在 `packages/opencode/src/session/prompt.ts` 中给 `PromptInput` 新增 `skills`：
 
 ```ts
   skills: Schema.optional(Schema.Array(Schema.String)),
 ```
 
-- [ ] **Step 7: Run backend tests**
+- [ ] **步骤 7：运行后端测试**
 
-Run:
+运行：
 
 ```bash
 cd packages/opencode
 bun test test/session/prompt.test.ts --timeout 30000
 ```
 
-Expected: PASS.
+预期：PASS。
 
-- [ ] **Step 8: Commit**
+- [ ] **步骤 8：提交**
 
-Run:
+运行：
 
 ```bash
 git add packages/opencode/src/session/prompt.ts packages/opencode/test/session/prompt.test.ts
@@ -958,34 +958,34 @@ git commit -m "feat(opencode): auto-load prompt skills"
 
 ---
 
-### Task 6: Regenerate JavaScript SDK
+### 任务 6：重新生成 JavaScript SDK
 
-**Files:**
-- Modify generated SDK files under `packages/sdk/js/src/v2/gen/`
+**文件：**
+- 修改 `packages/sdk/js/src/v2/gen/` 下的生成文件
 
-- [ ] **Step 1: Regenerate SDK**
+- [ ] **步骤 1：重新生成 SDK**
 
-Run from the repo root:
+在 repo 根目录运行：
 
 ```bash
 ./packages/sdk/js/script/build.ts
 ```
 
-Expected: generated SDK files update so the session prompt payload includes `skills?: Array<string>`.
+预期：生成的 SDK 文件更新，session prompt payload 包含 `skills?: Array<string>`。
 
-- [ ] **Step 2: Inspect generated diff**
+- [ ] **步骤 2：检查生成的 diff**
 
-Run:
+运行：
 
 ```bash
 git diff -- packages/sdk/js/src/v2/gen/types.gen.ts packages/sdk/js/src/v2/gen/sdk.gen.ts | rg -n "skills|Prompt"
 ```
 
-Expected: diff contains a new optional `skills` payload field for session prompt data. It should not contain unrelated endpoint changes.
+预期：diff 中包含 session prompt data 新增的可选 `skills` payload 字段，不应包含无关 endpoint 的变更。
 
-- [ ] **Step 3: Commit**
+- [ ] **步骤 3：提交**
 
-Run:
+运行：
 
 ```bash
 git add packages/sdk/js/src/v2/gen
@@ -994,82 +994,82 @@ git commit -m "chore(sdk): regenerate prompt skill types"
 
 ---
 
-### Task 7: Final Verification
+### 任务 7：最终验证
 
-**Files:**
-- Verify all files changed by Tasks 1-6.
+**文件：**
+- 验证任务 1–6 改动的全部文件。
 
-- [ ] **Step 1: Run focused TUI tests**
+- [ ] **步骤 1：运行 TUI 聚焦测试**
 
-Run:
+运行：
 
 ```bash
 cd packages/tui
 bun test test/prompt/skill.test.ts test/context/sync-skill.test.tsx --timeout 30000
 ```
 
-Expected: PASS.
+预期：PASS。
 
-- [ ] **Step 2: Run focused backend tests**
+- [ ] **步骤 2：运行后端聚焦测试**
 
-Run:
+运行：
 
 ```bash
 cd packages/opencode
 bun test test/session/prompt.test.ts --timeout 30000
 ```
 
-Expected: PASS.
+预期：PASS。
 
-- [ ] **Step 3: Typecheck TUI**
+- [ ] **步骤 3：TUI typecheck**
 
-Run:
+运行：
 
 ```bash
 cd packages/tui
 bun typecheck
 ```
 
-Expected: PASS.
+预期：PASS。
 
-- [ ] **Step 4: Typecheck opencode**
+- [ ] **步骤 4：opencode typecheck**
 
-Run:
+运行：
 
 ```bash
 cd packages/opencode
 bun typecheck
 ```
 
-Expected: PASS.
+预期：PASS。
 
-- [ ] **Step 5: Review final diff**
+- [ ] **步骤 5：审查最终 diff**
 
-Run:
+运行：
 
 ```bash
 git status --short
 git diff --stat origin/dev...HEAD
 ```
 
-Expected: only TUI prompt/sync/theme tests, backend prompt tests, generated SDK, and this feature's docs/plans are changed.
+预期：只改动 TUI prompt/sync/theme 测试、后端 prompt 测试、生成的 SDK，以及本特性的 docs/plans。
 
-- [ ] **Step 6: Confirm there is no uncommitted verification output**
+- [ ] **步骤 6：确认没有未提交的验证产物**
 
-Run:
+运行：
 
 ```bash
 git status --short
 ```
 
-Expected: no output. If this command prints files, inspect them with `git diff` and either commit intentional generated changes with a conventional commit message or revert only the unintended verification output.
+预期：无输出。如果该命令打印出文件，用 `git diff` 检查，并按 conventional commit 提交有意的生成改动，或只还原非预期的验证产物。
 
 ---
 
-## Self-Review
+## 自检
 
-**Spec coverage:** The plan covers TUI-only `$` trigger, visible mention, prompt history restore, multiple skills, manual `$skill-name` extraction, unknown token ignore behavior, shell mode exclusion through normal prompt autocomplete behavior, backend `skills` payload, automatic skill loading, missing skill errors, denied skill errors, SDK regeneration, and package-local typechecks.
+**Spec 覆盖：** 本计划覆盖了仅 TUI 的 `$` trigger、可见 mention、prompt history restore、多 skill、手写 `$skill-name` 提取、未知 token 忽略行为、通过普通 prompt autocomplete 行为实现的 shell mode 排除、后端 `skills` payload、自动 skill 加载、缺失 skill 报错、拒绝 skill 报错、SDK 重新生成，以及包内 typecheck。
 
-**Red-flag scan:** This plan contains concrete files, commands, snippets, test names, and commit commands. It does not use deferred implementation instructions.
+**风险扫描：** 本计划包含具体的文件、命令、代码片段、测试名与提交命令，不使用延迟实现的描述。
 
-**Type consistency:** The local TUI part is consistently named `SkillPromptPart` with `type: "skill"`. The synced skill list is consistently named `sync.data.skill`. The backend payload is consistently named `skills`, and backend explicit loading stores formatted skill content through `SessionV1.User.system`.
+**类型一致性：** TUI 本地 part 统一命名为 `SkillPromptPart`，`type: "skill"`；同步的 skill 列表统一命名为 `sync.data.skill`；后端 payload 统一命名为 `skills`；后端显式加载通过 `SessionV1.User.system` 存储格式化后的 skill 内容。
