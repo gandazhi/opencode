@@ -74,6 +74,7 @@ export type AutocompleteOption = {
 export function Autocomplete(props: {
   value: string
   sessionID?: string
+  mode: () => "normal" | "shell"
   setPrompt: (input: (prompt: PromptInfo) => void) => void
   setExtmark: (partIndex: number, extmarkId: number) => void
   anchor: () => BoxRenderable
@@ -748,7 +749,7 @@ export function Autocomplete(props: {
         }
 
         const dollarIndex = value.slice(0, offset).search(/\$[^\s$]*$/)
-        if (dollarIndex !== -1) {
+        if (dollarIndex !== -1 && props.mode() !== "shell") {
           show("$")
           setStore("index", dollarIndex)
           return
