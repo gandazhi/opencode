@@ -19,6 +19,7 @@ import type {
   VcsInfo,
   SnapshotFileDiff,
   ConsoleState,
+  AppSkillsResponse,
 } from "@opencode-ai/sdk/v2"
 import { createStore, produce, reconcile } from "solid-js/store"
 import { useProject } from "./project"
@@ -115,6 +116,7 @@ export const {
       provider_auth: Record<string, ProviderAuthMethod[]>
       agent: Agent[]
       command: Command[]
+      skill: AppSkillsResponse
       permission: {
         [sessionID: string]: PermissionRequest[]
       }
@@ -182,6 +184,7 @@ export const {
       permission: {},
       question: {},
       command: [],
+      skill: [],
       provider: [],
       provider_default: {},
       session: [],
@@ -691,6 +694,7 @@ export const {
             ...(args.continue ? [] : [sessionListPromise.then((sessions) => setStore("session", reconcile(sessions)))]),
             consoleStatePromise.then((consoleState) => setStore("console_state", reconcile(consoleState))),
             sdk.client.command.list({ workspace }).then((x) => setStore("command", reconcile(x.data ?? []))),
+            sdk.client.app.skills({ workspace }).then((x) => setStore("skill", reconcile(x.data ?? []))),
             sdk.client.lsp.status({ workspace }).then((x) => setStore("lsp", reconcile(x.data ?? []))),
             sdk.client.mcp.status({ workspace }).then((x) => setStore("mcp", reconcile(x.data ?? {}))),
             sdk.client.experimental.resource

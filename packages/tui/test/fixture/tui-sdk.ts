@@ -51,6 +51,7 @@ export function createFetch(override?: FetchHandler) {
         "/experimental/workspace/status",
         "/formatter",
         "/lsp",
+        "/skill",
       ].includes(url.pathname)
     )
       return json([])
