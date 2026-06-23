@@ -34,6 +34,7 @@ import { usePromptHistory, type PromptInfo } from "../../prompt/history"
 import { computePromptTraits } from "../../prompt/traits"
 import { expandPastedTextPlaceholders, expandTrackedPastedText } from "../../prompt/part"
 import { usePromptStash } from "../../prompt/stash"
+import { collectPromptSkillNames } from "../../prompt/skill"
 import { DialogStash } from "../dialog-stash"
 import { type AutocompleteRef, Autocomplete } from "./autocomplete"
 import { useRenderer, useTerminalDimensions, type JSX } from "@opentui/solid"
@@ -1038,6 +1039,12 @@ export function Prompt(props: PromptProps) {
 
     // Filter out text parts (pasted content) since they're now expanded inline
     const nonTextParts = store.prompt.parts.filter((part) => part.type !== "text")
+    const promptSkills = collectPromptSkillNames({
+      parts: nonTextParts,
+      text: inputText,
+      skills: sync.data.skill,
+    })
+    const requestParts = nonTextParts.filter((part) => part.type !== "skill")
 
     // Capture mode before it gets reset
     const currentMode = store.mode
@@ -1090,29 +1097,28 @@ export function Prompt(props: PromptProps) {
         agent: agent.name,
         model: `${selectedModel.providerID}/${selectedModel.modelID}`,
         variant,
-        parts: nonTextParts.filter((x) => x.type === "file"),
+        parts: requestParts.filter((x) => x.type === "file"),
       })
     } else {
       move.startSubmit()
-      sdk.client.session
-        .prompt(
+      const promptBody = {
+        sessionID,
+        ...selectedModel,
+        agent: agent.name,
+        model: selectedModel,
+        variant,
+        skills: promptSkills,
+        parts: [
+          ...editorParts,
           {
-            sessionID,
-            ...selectedModel,
-            agent: agent.name,
-            model: selectedModel,
-            variant,
-            parts: [
-              ...editorParts,
-              {
-                type: "text",
-                text: inputText,
-              },
-              ...nonTextParts,
-            ],
+            type: "text" as const,
+            text: inputText,
           },
-          { throwOnError: true },
-        )
+          ...requestParts,
+        ],
+      }
+      sdk.client.session
+        .prompt(promptBody, { throwOnError: true })
         .catch((error) => {
           toast.show({
             title: "Failed to send prompt",

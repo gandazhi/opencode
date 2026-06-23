@@ -52,7 +52,7 @@ export function extractSkillNamesFromPrompt(text: string, skills: readonly Skill
 }
 
 export function collectPromptSkillNames(input: {
-  parts: readonly { type: string; name?: string }[]
+  parts: readonly { type: string; name?: string; source?: unknown }[]
   text: string
   skills: readonly SkillInfo[]
 }) {

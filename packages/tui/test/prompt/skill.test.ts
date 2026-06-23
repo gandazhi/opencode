@@ -55,4 +55,21 @@ describe("prompt skill mentions", () => {
     expect(selected.source.value).toBe("$brainstorming")
     expect(selected.source.end - selected.source.start).toBe("$brainstorming".length)
   })
+
+  test("collects only known skill names for backend payload", () => {
+    expect(
+      collectPromptSkillNames({
+        parts: [
+          {
+            type: "skill",
+            name: "brainstorming",
+            source: { start: 0, end: "$brainstorming".length, value: "$brainstorming" },
+          },
+          { type: "agent", name: "build" },
+        ],
+        text: "$unknown $test",
+        skills,
+      }),
+    ).toEqual(["brainstorming", "test"])
+  })
 })

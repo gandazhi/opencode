@@ -180,12 +180,23 @@ export type TuiDialogSelectProps<Value = unknown> = {
   current?: Value
 }
 
+export type TuiSkillPromptPart = {
+  type: "skill"
+  name: string
+  source: {
+    start: number
+    end: number
+    value: string
+  }
+}
+
 export type TuiPromptInfo = {
   input: string
   mode?: "normal" | "shell"
   parts: (
     | Omit<FilePart, "id" | "messageID" | "sessionID">
     | Omit<AgentPart, "id" | "messageID" | "sessionID">
+    | TuiSkillPromptPart
     | (Omit<TextPart, "id" | "messageID" | "sessionID"> & {
         source?: {
           text: {
