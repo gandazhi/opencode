@@ -513,7 +513,7 @@ export function Autocomplete(props: {
       .map((skill) => ({
         display: "$" + skill.name,
         value: "$" + skill.name,
-        description: skill.description,
+        description: skill.description ? ` ${skill.description}` : undefined,
         onSelect: () => insertSkill(skill.name),
       })),
   )
