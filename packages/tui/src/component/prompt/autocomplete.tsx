@@ -20,7 +20,7 @@ import { Locale } from "../../util/locale"
 import type { PromptInfo } from "../../prompt/history"
 import { useFrecency } from "../../prompt/frecency"
 import { useBindings, useCommandSlashes, useOpencodeModeStack } from "../../keymap"
-import { displayCharAt, mentionTriggerIndex } from "../../prompt/display"
+import { displayCharAt, displaySlice, mentionTriggerIndex, promptOffsetWidth } from "../../prompt/display"
 import type { SkillPromptPart } from "../../prompt/skill"
 
 function removeLineRange(input: string) {
@@ -748,10 +748,11 @@ export function Autocomplete(props: {
           return
         }
 
-        const dollarIndex = value.slice(0, offset).search(/\$[^\s$]*$/)
-        if (dollarIndex !== -1 && props.mode() !== "shell") {
+        const beforeCursor = displaySlice(value, 0, offset)
+        const dollarMatch = beforeCursor.search(/\$[^\s$]*$/)
+        if (dollarMatch !== -1 && props.mode() !== "shell") {
           show("$")
-          setStore("index", dollarIndex)
+          setStore("index", promptOffsetWidth(beforeCursor.slice(0, dollarMatch)))
           return
         }
 
