@@ -25,6 +25,7 @@ import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
 import * as Stream from "effect/Stream"
 import { Command } from "../command"
+import { Skill } from "@/skill"
 import { Goal } from "./goal"
 import { pathToFileURL, fileURLToPath } from "url"
 import { Config } from "@/config/config"
@@ -98,6 +99,26 @@ export interface Interface {
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/SessionPrompt") {}
 
+function explicitSkillSystem(info: Skill.Info) {
+  const dir = path.dirname(info.location)
+  const base = pathToFileURL(dir).href
+  return [
+    `<loaded_skill name="${info.name}">`,
+    `# Skill: ${info.name}`,
+    "",
+    info.content.trim(),
+    "",
+    `Base directory for this skill: ${base}`,
+    "Relative paths in this skill are relative to this base directory.",
+    "</loaded_skill>",
+  ].join("\n")
+}
+
+function mergeSystemParts(parts: Array<string | undefined>) {
+  const system = parts.filter((part): part is string => !!part?.trim()).join("\n\n")
+  return system.length > 0 ? system : undefined
+}
+
 export const layer = Layer.effect(
   Service,
   Effect.gen(function* () {
@@ -130,6 +151,7 @@ export const layer = Layer.effect(
     const question = yield* Question.Service
     const flags = yield* RuntimeFlags.Service
     const database = yield* Database.Service
+    const skillSvc = yield* Skill.Service
     const { db } = database
     const ops = Effect.fn("SessionPrompt.ops")(function* () {
       return {
@@ -639,6 +661,36 @@ export const layer = Layer.effect(
       return yield* provider.defaultModel().pipe(Effect.orDie)
     })
 
+    const loadExplicitSkills = Effect.fn("SessionPrompt.loadExplicitSkills")(function* (input: {
+      sessionID: SessionID
+      agent: Agent.Info
+      names?: readonly string[]
+    }) {
+      const names = [...new Set(input.names ?? [])]
+      const sections: string[] = []
+
+      for (const name of names) {
+        if (Permission.evaluate("skill", name, input.agent.permission).action === "deny") {
+          const error = new NamedError.Unknown({ message: `Skill "${name}" is denied by permissions.` })
+          yield* events.publish(Session.Event.Error, { sessionID: input.sessionID, error: error.toObject() })
+          throw error
+        }
+
+        const info = yield* skillSvc.require(name).pipe(
+          Effect.catchTag("Skill.NotFoundError", (err) =>
+            Effect.gen(function* () {
+              const error = new NamedError.Unknown({ message: err.message })
+              yield* events.publish(Session.Event.Error, { sessionID: input.sessionID, error: error.toObject() })
+              throw error
+            }),
+          ),
+        )
+        sections.push(explicitSkillSystem(info))
+      }
+
+      return sections.length > 0 ? sections.join("\n\n") : undefined
+    })
+
     const createUserMessage = Effect.fn("SessionPrompt.createUserMessage")(function* (input: PromptInput) {
       const agentName = input.agent
       const ag = agentName ? yield* agents.get(agentName) : yield* agents.defaultInfo()
@@ -666,6 +718,12 @@ export const layer = Layer.effect(
           : undefined
       const variant = input.variant ?? (ag.variant && full?.variants?.[ag.variant] ? ag.variant : undefined)
 
+      const explicitSkills = yield* loadExplicitSkills({
+        sessionID: input.sessionID,
+        agent: ag,
+        names: input.skills,
+      })
+
       const info: SessionV1.User = {
         id: input.messageID ?? MessageID.ascending(),
         role: "user",
@@ -678,7 +736,7 @@ export const layer = Layer.effect(
           modelID: model.modelID,
           variant,
         },
-        system: input.system,
+        system: mergeSystemParts([input.system, explicitSkills]),
         format: input.format,
       }
 
@@ -1729,6 +1787,7 @@ export const defaultLayer = Layer.suspend(() =>
         EventV2Bridge.defaultLayer,
         Goal.defaultLayer,
         Question.defaultLayer,
+        Skill.defaultLayer,
       ),
     ),
   ),
@@ -1750,6 +1809,7 @@ export const PromptInput = Schema.Struct({
   }),
   format: Schema.optional(SessionV1.Format),
   system: Schema.optional(Schema.String),
+  skills: Schema.optional(Schema.Array(Schema.String)),
   variant: Schema.optional(Schema.String),
   parts: Schema.Array(
     Schema.Union([
@@ -1846,6 +1906,7 @@ export const node = LayerNode.make(layer, [
   SessionCompaction.node,
   Plugin.node,
   Command.node,
+  Skill.node,
   Goal.node,
   Question.node,
   Config.node,

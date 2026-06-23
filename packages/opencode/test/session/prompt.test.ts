@@ -216,6 +216,7 @@ function makePrompt(input?: { processor?: "blocking"; goal?: Layer.Layer<Goal.Se
   )
   return SessionPrompt.layer.pipe(
     Layer.provide(SessionRevert.defaultLayer),
+    Layer.provide(Skill.defaultLayer),
     Layer.provide(Image.defaultLayer),
     Layer.provide(summary),
     Layer.provideMerge(run),
@@ -578,6 +579,122 @@ it.instance("loop calls LLM and returns assistant message", () =>
     const parts = result.parts.filter((p) => p.type === "text")
     expect(parts.some((p) => p.type === "text" && p.text === "world")).toBe(true)
     expect(yield* llm.hits).toHaveLength(1)
+  }),
+)
+
+it.instance("prompt loads explicit skills into the next provider request", () =>
+  Effect.gen(function* () {
+    const { dir, llm } = yield* useServerConfig(providerCfg)
+    yield* writeText(
+      path.join(dir, ".opencode", "skill", "selected-skill", "SKILL.md"),
+      [
+        "---",
+        "name: selected-skill",
+        "description: Selected skill.",
+        "---",
+        "",
+        "# Selected Skill",
+        "",
+        "Always say selected skill instructions are loaded.",
+      ].join("\n"),
+    )
+
+    const prompt = yield* SessionPrompt.Service
+    const sessions = yield* Session.Service
+    const chat = yield* sessions.create({
+      title: "Skill prompt",
+      permission: [{ permission: "*", pattern: "*", action: "allow" }],
+    })
+
+    yield* llm.text("done")
+    yield* prompt.prompt({
+      sessionID: chat.id,
+      agent: "build",
+      model: ref,
+      parts: [{ type: "text", text: "Use $selected-skill for this task" }],
+      skills: ["selected-skill"],
+    })
+
+    const hit = (yield* llm.hits)[0]
+    const messages = hit?.body.messages as Array<{ role: string; content: string }>
+    const system = messages.find((message) => message.role === "system")?.content ?? ""
+
+    expect(system).toContain('<loaded_skill name="selected-skill">')
+    expect(system).toContain("# Selected Skill")
+    expect(system).toContain("Always say selected skill instructions are loaded.")
+  }),
+)
+
+noLLMServer.instance("prompt fails clearly when an explicit skill is missing", () =>
+  Effect.gen(function* () {
+    const prompt = yield* SessionPrompt.Service
+    const sessions = yield* Session.Service
+    const chat = yield* sessions.create({ title: "Missing skill" })
+
+    const exit = yield* prompt
+      .prompt({
+        sessionID: chat.id,
+        agent: "build",
+        model: ref,
+        noReply: true,
+        parts: [{ type: "text", text: "Use $missing-skill" }],
+        skills: ["missing-skill"],
+      })
+      .pipe(Effect.exit)
+
+    expect(Exit.isFailure(exit)).toBe(true)
+    if (Exit.isFailure(exit)) {
+      const err = Cause.squash(exit.cause)
+      expect(NamedError.Unknown.isInstance(err)).toBe(true)
+      if (NamedError.Unknown.isInstance(err)) {
+        expect(err.data.message).toContain('Skill "missing-skill" not found.')
+      }
+    }
+  }),
+)
+
+noLLMServer.instance("prompt fails clearly when an explicit skill is denied", () =>
+  Effect.gen(function* () {
+    const { directory: dir } = yield* TestInstance
+    yield* writeText(
+      path.join(dir, ".opencode", "skill", "denied-skill", "SKILL.md"),
+      ["---", "name: denied-skill", "description: Denied skill.", "---", "", "# Denied Skill"].join("\n"),
+    )
+    yield* writeConfig(dir, {
+      agent: {
+        build: {
+          permission: {
+            skill: {
+              "denied-skill": "deny",
+            },
+          },
+        },
+      },
+    })
+
+    const prompt = yield* SessionPrompt.Service
+    const sessions = yield* Session.Service
+    const chat = yield* sessions.create({ title: "Denied skill" })
+
+    const exit = yield* prompt
+      .prompt({
+        sessionID: chat.id,
+        agent: "build",
+        model: ref,
+        noReply: true,
+        parts: [{ type: "text", text: "Use $denied-skill" }],
+        skills: ["denied-skill"],
+      })
+      .pipe(Effect.exit)
+
+    expect(Exit.isFailure(exit)).toBe(true)
+    if (Exit.isFailure(exit)) {
+      const err = Cause.squash(exit.cause)
+      expect(NamedError.Unknown.isInstance(err)).toBe(true)
+      if (NamedError.Unknown.isInstance(err)) {
+        expect(err.data.message).toContain('Skill "denied-skill" is denied by permissions.')
+      }
+    }
   }),
 )
 
