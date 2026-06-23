@@ -5,6 +5,7 @@ import type { AgentPart, FilePart, TextPart } from "@opencode-ai/sdk/v2"
 import { createSimpleContext } from "../context/helper"
 import { useTuiPaths } from "../context/runtime"
 import { appendText, readText, writeText } from "../util/persistence"
+import type { SkillPromptPart } from "./skill"
 
 export type PromptInfo = {
   input: string
@@ -12,6 +13,7 @@ export type PromptInfo = {
   parts: (
     | Omit<FilePart, "id" | "messageID" | "sessionID">
     | Omit<AgentPart, "id" | "messageID" | "sessionID">
+    | SkillPromptPart
     | (Omit<TextPart, "id" | "messageID" | "sessionID"> & {
         source?: {
           text: {
