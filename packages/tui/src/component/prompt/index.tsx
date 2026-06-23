@@ -227,6 +227,7 @@ export function Prompt(props: PromptProps) {
   const fileStyleId = syntax().getStyleId("extmark.file")!
   const agentStyleId = syntax().getStyleId("extmark.agent")!
   const pasteStyleId = syntax().getStyleId("extmark.paste")!
+  const skillStyleId = syntax().getStyleId("extmark.skill") ?? agentStyleId
   let promptPartTypeId = 0
   const event = useEvent()
 
@@ -669,6 +670,11 @@ export function Prompt(props: PromptProps) {
         end = part.source.end
         virtualText = part.source.value
         styleId = agentStyleId
+      } else if (part.type === "skill") {
+        start = part.source.start
+        end = part.source.end
+        virtualText = part.source.value
+        styleId = skillStyleId
       } else if (part.type === "text" && part.source?.text) {
         start = part.source.text.start
         end = part.source.text.end
@@ -711,6 +717,9 @@ export function Prompt(props: PromptProps) {
               } else if (part.type === "file" && part.source?.text) {
                 part.source.text.start = extmark.start
                 part.source.text.end = extmark.end
+              } else if (part.type === "skill") {
+                part.source.start = extmark.start
+                part.source.end = extmark.end
               } else if (part.type === "text" && part.source?.text) {
                 part.source.text.start = extmark.start
                 part.source.text.end = extmark.end
@@ -1690,6 +1699,7 @@ export function Prompt(props: PromptProps) {
         value={store.prompt.input}
         fileStyleId={fileStyleId}
         agentStyleId={agentStyleId}
+        skillStyleId={skillStyleId}
         promptPartTypeId={() => promptPartTypeId}
       />
     </>

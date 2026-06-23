@@ -40,4 +40,19 @@ describe("prompt skill mentions", () => {
       }),
     ).toEqual(["test-driven-development", "brainstorming"])
   })
+
+  test("keeps selected skill prompt part source as visible dollar text", () => {
+    const selected: SkillPromptPart = {
+      type: "skill",
+      name: "brainstorming",
+      source: {
+        start: 4,
+        end: 4 + "$brainstorming".length,
+        value: "$brainstorming",
+      },
+    }
+
+    expect(selected.source.value).toBe("$brainstorming")
+    expect(selected.source.end - selected.source.start).toBe("$brainstorming".length)
+  })
 })
