@@ -511,7 +511,7 @@ export function Autocomplete(props: {
       .toSorted((a, b) => a.name.localeCompare(b.name))
       .map((skill) => ({
         display: "$" + skill.name,
-        value: skill.name,
+        value: "$" + skill.name,
         description: skill.description,
         onSelect: () => insertSkill(skill.name),
       })),
