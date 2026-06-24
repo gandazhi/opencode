@@ -19,16 +19,16 @@ describe("loggers", () => {
     expect(Logging.loggers()).toHaveLength(2)
   })
 
-  test("returns only fileLogger after suppressStderrLogger even with OPENCODE_PRINT_LOGS=1", () => {
-    process.env.OPENCODE_PRINT_LOGS = "1"
-    Logging.suppressStderrLogger()
-    expect(Logging.loggers()).toHaveLength(1)
-  })
-
   test("fileLogger is always present", () => {
     delete process.env.OPENCODE_PRINT_LOGS
     expect(Logging.loggers()[0]).toBeDefined()
     process.env.OPENCODE_PRINT_LOGS = "1"
     expect(Logging.loggers()[0]).toBeDefined()
+  })
+
+  test("returns only fileLogger after suppressStderrLogger even with OPENCODE_PRINT_LOGS=1", () => {
+    process.env.OPENCODE_PRINT_LOGS = "1"
+    Logging.suppressStderrLogger()
+    expect(Logging.loggers()).toHaveLength(1)
   })
 })
