@@ -53,6 +53,12 @@ export function fileLogger(file = path.join(Global.Path.log, "opencode.log"), id
 
 const stderrLogger = Logger.make((options) => process.stderr.write(formatter().log(options) + "\n"))
 
+let stderrSuppressed = false
+
+export function suppressStderrLogger() {
+  stderrSuppressed = true
+}
+
 export function minimumLogLevel() {
   const value = process.env.OPENCODE_LOG_LEVEL?.toUpperCase()
   const levels = {
@@ -65,7 +71,7 @@ export function minimumLogLevel() {
 }
 
 export function loggers() {
-  return process.env.OPENCODE_PRINT_LOGS === "1" ? [fileLogger(), stderrLogger] : [fileLogger()]
+  return process.env.OPENCODE_PRINT_LOGS === "1" && !stderrSuppressed ? [fileLogger(), stderrLogger] : [fileLogger()]
 }
 
 export * as Logging from "./logging"

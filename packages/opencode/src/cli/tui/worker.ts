@@ -10,8 +10,13 @@ import { Heap } from "@/cli/heap"
 import { AppRuntime } from "@/effect/app-runtime"
 import { Effect } from "effect"
 import { disposeAllInstancesAndEmitGlobalDisposed } from "@/server/global-lifecycle"
+import { Logging } from "@opencode-ai/core/observability/logging"
 
 Heap.start()
+
+// The TUI owns the terminal via @opentui; suppress raw stderr from the embedded
+// server so log lines don't corrupt the rendered screen. File logging is unaffected.
+Logging.suppressStderrLogger()
 
 // Subscribe to global events and forward them via RPC
 GlobalBus.on("event", (event) => {
