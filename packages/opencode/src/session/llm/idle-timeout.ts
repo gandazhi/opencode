@@ -14,23 +14,37 @@ import { Effect, Stream } from "effect"
  * emitted value, and is cleared when the stream ends (success, error, or
  * interruption). `onIdle` is expected to abort the underlying source so the
  * stream actually terminates — this helper only detects idleness.
+ *
+ * `options.suppress`, when it returns `true`, marks the current quiet period as
+ * expected (e.g. a tool is executing, so the provider connection is idle by
+ * design). The watchdog then re-arms instead of firing `onIdle`, so legitimate
+ * long-running tool execution is never mistaken for a stalled connection.
  */
 export function withIdleTimeout<A, E, R>(
   self: Stream.Stream<A, E, R>,
   timeoutMs: number,
   onIdle: () => void = () => {},
+  options?: { suppress?: () => boolean },
 ): Stream.Stream<A, E, R> {
+  const suppressed = options?.suppress ?? (() => false)
   return Stream.scoped(
     Stream.unwrap(
       Effect.gen(function* () {
         let timer: ReturnType<typeof setTimeout> | undefined
         const arm = () => {
           if (timer) clearTimeout(timer)
-          timer = setTimeout(() => {
-            if (timer === undefined) return
-            timer = undefined
-            onIdle()
-          }, timeoutMs)
+          timer = setTimeout(fire, timeoutMs)
+        }
+        // A suppressed quiet period is expected (a tool is executing); re-arm
+        // and keep waiting rather than aborting a connection that is idle by design.
+        const fire = () => {
+          if (timer === undefined) return
+          timer = undefined
+          if (suppressed()) {
+            arm()
+            return
+          }
+          onIdle()
         }
         const disarm = () => {
           if (timer) {

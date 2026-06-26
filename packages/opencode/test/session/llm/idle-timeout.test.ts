@@ -73,4 +73,65 @@ describe("withIdleTimeout", () => {
     await Bun.sleep(80)
     expect(idleFired).toBe(false)
   })
+
+  test("does not fire onIdle while suppress() reports an expected quiet period", async () => {
+    const ctrl = new AbortController()
+    let idleFired = false
+    // Emits one value then hangs: simulates a tool-call being emitted followed
+    // by tool execution, during which the provider connection is quiet *by
+    // design* (not stalled). The watchdog must not abort that window.
+    const hung = makeHungStream([1], ctrl)
+
+    const wrapped = withIdleTimeout(
+      hung,
+      60,
+      () => {
+        idleFired = true
+        ctrl.abort()
+      },
+      { suppress: () => true },
+    )
+
+    const draining = Effect.runPromise(wrapped.pipe(Stream.runDrain)).catch(() => {})
+    // Wait well past several timeout windows; suppress() must keep re-arming
+    // instead of aborting.
+    await Bun.sleep(220)
+    expect(idleFired).toBe(false)
+
+    // End the still-hung stream so the test can complete.
+    ctrl.abort()
+    await draining
+  })
+
+  test("fires onIdle once suppress() lifts and the stream is still hung", async () => {
+    const ctrl = new AbortController()
+    let idleFired = false
+    let suppressed = true
+    const hung = makeHungStream([1], ctrl)
+
+    const wrapped = withIdleTimeout(
+      hung,
+      60,
+      () => {
+        idleFired = true
+        ctrl.abort()
+      },
+      { suppress: () => suppressed },
+    )
+
+    const start = Date.now()
+    const draining = Effect.runPromise(wrapped.pipe(Stream.runDrain)).catch(() => {})
+    // Suppressed window: idle must not fire even past the timeout.
+    await Bun.sleep(150)
+    expect(idleFired).toBe(false)
+
+    // Tool finishes — lift suppression. The still-hung stream should now trip
+    // the watchdog within another window.
+    suppressed = false
+    await draining
+    const elapsed = Date.now() - start
+
+    expect(idleFired).toBe(true)
+    expect(elapsed).toBeLessThan(2000)
+  })
 })

@@ -388,7 +388,26 @@ const live: Layer.Layer<
                 Stream.flatMap((events) => Stream.fromIterable(events)),
               )
             }
-            return withIdleTimeout(inner, STREAM_IDLE_TIMEOUT_MS, () => ctrl.abort())
+            // A tool call opens a quiet window: while the tool executes the
+            // provider emits nothing, so the idle watchdog would otherwise
+            // mistake legitimate tool-execution silence for a stalled connection
+            // and abort it (killing long-running subagents after
+            // STREAM_IDLE_TIMEOUT_MS). Track outstanding tool calls and suppress
+            // the timeout while any are in flight.
+            let pendingTools = 0
+            const tracked = inner.pipe(
+              Stream.tap((event) =>
+                Effect.sync(() => {
+                  if (event.type === "tool-call") pendingTools++
+                  else if (event.type === "tool-result" || event.type === "tool-error") {
+                    if (pendingTools > 0) pendingTools--
+                  }
+                }),
+              ),
+            )
+            return withIdleTimeout(tracked, STREAM_IDLE_TIMEOUT_MS, () => ctrl.abort(), {
+              suppress: () => pendingTools > 0,
+            })
           }),
         ),
       )
