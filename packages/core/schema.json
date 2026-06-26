@@ -1,8 +1,8 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "merged-v1.17.6-workflow",
-  "prevIds": ["169a0f0f-d58f-479f-b024-fa1c7b9a09db", "bded0e1e-a3b3-43ba-a4a7-067e80cd8ef1"],
+  "id": "f14a9b18-8207-487e-a3d3-227e629ba9ad",
+  "prevIds": ["169a0f0f-d58f-479f-b024-fa1c7b9a09db"],
   "ddl": [
     {
       "name": "workspace",
@@ -78,10 +78,6 @@
     },
     {
       "name": "session_share",
-      "entityType": "tables"
-    },
-    {
-      "name": "workflow_run",
       "entityType": "tables"
     },
     {
@@ -908,16 +904,6 @@
       "type": "text",
       "notNull": true,
       "autoincrement": false,
-      "default": "'build'",
-      "generated": null,
-      "name": "agent",
-      "entityType": "columns",
-      "table": "session_context_epoch"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
       "default": null,
       "generated": null,
       "name": "snapshot",
@@ -931,26 +917,6 @@
       "default": null,
       "generated": null,
       "name": "baseline_seq",
-      "entityType": "columns",
-      "table": "session_context_epoch"
-    },
-    {
-      "type": "integer",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "replacement_seq",
-      "entityType": "columns",
-      "table": "session_context_epoch"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "0",
-      "generated": null,
-      "name": "revision",
       "entityType": "columns",
       "table": "session_context_epoch"
     },
@@ -1515,163 +1481,9 @@
       "table": "session_share"
     },
     {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "id",
-      "entityType": "columns",
-      "table": "workflow_run"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "session_id",
-      "entityType": "columns",
-      "table": "workflow_run"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "name",
-      "entityType": "columns",
-      "table": "workflow_run"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "status",
-      "entityType": "columns",
-      "table": "workflow_run"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "0",
-      "generated": null,
-      "name": "running",
-      "entityType": "columns",
-      "table": "workflow_run"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "0",
-      "generated": null,
-      "name": "succeeded",
-      "entityType": "columns",
-      "table": "workflow_run"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "0",
-      "generated": null,
-      "name": "failed",
-      "entityType": "columns",
-      "table": "workflow_run"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "current_phase",
-      "entityType": "columns",
-      "table": "workflow_run"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "parent_actor_id",
-      "entityType": "columns",
-      "table": "workflow_run"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "args",
-      "entityType": "columns",
-      "table": "workflow_run"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "script_sha",
-      "entityType": "columns",
-      "table": "workflow_run"
-    },
-    {
-      "type": "integer",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "agent_timeout_ms",
-      "entityType": "columns",
-      "table": "workflow_run"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "error",
-      "entityType": "columns",
-      "table": "workflow_run"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "time_created",
-      "entityType": "columns",
-      "table": "workflow_run"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "time_updated",
-      "entityType": "columns",
-      "table": "workflow_run"
-    },
-    {
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "project",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -1680,13 +1492,9 @@
       "table": "workspace"
     },
     {
-      "columns": [
-        "active_account_id"
-      ],
+      "columns": ["active_account_id"],
       "tableTo": "account",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -1695,13 +1503,9 @@
       "table": "account_state"
     },
     {
-      "columns": [
-        "aggregate_id"
-      ],
+      "columns": ["aggregate_id"],
       "tableTo": "event_sequence",
-      "columnsTo": [
-        "aggregate_id"
-      ],
+      "columnsTo": ["aggregate_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -1710,13 +1514,9 @@
       "table": "event"
     },
     {
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "project",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -1725,13 +1525,9 @@
       "table": "permission"
     },
     {
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "project",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -1740,13 +1536,9 @@
       "table": "project_directory"
     },
     {
-      "columns": [
-        "session_id"
-      ],
+      "columns": ["session_id"],
       "tableTo": "session",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -1755,13 +1547,9 @@
       "table": "message"
     },
     {
-      "columns": [
-        "message_id"
-      ],
+      "columns": ["message_id"],
       "tableTo": "message",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -1770,13 +1558,9 @@
       "table": "part"
     },
     {
-      "columns": [
-        "session_id"
-      ],
+      "columns": ["session_id"],
       "tableTo": "session",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -1785,13 +1569,9 @@
       "table": "session_context_epoch"
     },
     {
-      "columns": [
-        "session_id"
-      ],
+      "columns": ["session_id"],
       "tableTo": "session",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -1800,13 +1580,9 @@
       "table": "session_input"
     },
     {
-      "columns": [
-        "session_id"
-      ],
+      "columns": ["session_id"],
       "tableTo": "session",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -1815,13 +1591,9 @@
       "table": "session_message"
     },
     {
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "project",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -1830,13 +1602,9 @@
       "table": "session"
     },
     {
-      "columns": [
-        "session_id"
-      ],
+      "columns": ["session_id"],
       "tableTo": "session",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -1845,13 +1613,9 @@
       "table": "todo"
     },
     {
-      "columns": [
-        "session_id"
-      ],
+      "columns": ["session_id"],
       "tableTo": "session",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -1860,201 +1624,136 @@
       "table": "session_share"
     },
     {
-      "columns": [
-        "session_id"
-      ],
-      "tableTo": "session",
-      "columnsTo": [
-        "id"
-      ],
-      "onUpdate": "NO ACTION",
-      "onDelete": "CASCADE",
-      "nameExplicit": false,
-      "name": "fk_workflow_run_session_id_session_id_fk",
-      "entityType": "fks",
-      "table": "workflow_run"
-    },
-    {
-      "columns": [
-        "email",
-        "url"
-      ],
+      "columns": ["email", "url"],
       "nameExplicit": false,
       "name": "control_account_pk",
       "entityType": "pks",
       "table": "control_account"
     },
     {
-      "columns": [
-        "project_id",
-        "directory"
-      ],
+      "columns": ["project_id", "directory"],
       "nameExplicit": false,
       "name": "project_directory_pk",
       "entityType": "pks",
       "table": "project_directory"
     },
     {
-      "columns": [
-        "session_id",
-        "position"
-      ],
+      "columns": ["session_id", "position"],
       "nameExplicit": false,
       "name": "todo_pk",
       "entityType": "pks",
       "table": "todo"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "workspace_pk",
       "table": "workspace",
       "entityType": "pks"
     },
     {
-      "columns": [
-        "name"
-      ],
+      "columns": ["name"],
       "nameExplicit": false,
       "name": "data_migration_pk",
       "table": "data_migration",
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "account_state_pk",
       "table": "account_state",
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "account_pk",
       "table": "account",
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "credential_pk",
       "table": "credential",
       "entityType": "pks"
     },
     {
-      "columns": [
-        "aggregate_id"
-      ],
+      "columns": ["aggregate_id"],
       "nameExplicit": false,
       "name": "event_sequence_pk",
       "table": "event_sequence",
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "event_pk",
       "table": "event",
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "permission_pk",
       "table": "permission",
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "project_pk",
       "table": "project",
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "message_pk",
       "table": "message",
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "part_pk",
       "table": "part",
       "entityType": "pks"
     },
     {
-      "columns": [
-        "session_id"
-      ],
+      "columns": ["session_id"],
       "nameExplicit": false,
       "name": "session_context_epoch_pk",
       "table": "session_context_epoch",
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "session_input_pk",
       "table": "session_input",
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "session_message_pk",
       "table": "session_message",
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "session_pk",
       "table": "session",
       "entityType": "pks"
     },
     {
-      "columns": [
-        "session_id"
-      ],
+      "columns": ["session_id"],
       "nameExplicit": false,
       "name": "session_share_pk",
       "table": "session_share",
-      "entityType": "pks"
-    },
-    {
-      "columns": [
-        "id"
-      ],
-      "nameExplicit": false,
-      "name": "workflow_run_pk",
-      "table": "workflow_run",
       "entityType": "pks"
     },
     {
@@ -2366,34 +2065,6 @@
       "name": "todo_session_idx",
       "entityType": "indexes",
       "table": "todo"
-    },
-    {
-      "columns": [
-        {
-          "value": "session_id",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "workflow_run_session_idx",
-      "entityType": "indexes",
-      "table": "workflow_run"
-    },
-    {
-      "columns": [
-        {
-          "value": "status",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "workflow_run_status_idx",
-      "entityType": "indexes",
-      "table": "workflow_run"
     }
   ],
   "renames": []

@@ -29,11 +29,12 @@
     },
     "packages/app": {
       "name": "@opencode-ai/app",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "dependencies": {
         "@kobalte/core": "catalog:",
         "@opencode-ai/core": "workspace:*",
         "@opencode-ai/sdk": "workspace:*",
+        "@opencode-ai/session-ui": "workspace:*",
         "@opencode-ai/ui": "workspace:*",
         "@pierre/trees": "1.0.0-beta.4",
         "@sentry/solid": "catalog:",
@@ -86,7 +87,7 @@
     },
     "packages/cli": {
       "name": "@opencode-ai/cli",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "bin": {
         "lildax": "./bin/lildax.cjs",
       },
@@ -109,9 +110,32 @@
         "@typescript/native-preview": "catalog:",
       },
     },
+    "packages/client": {
+      "name": "@opencode-ai/client",
+      "dependencies": {
+        "@opencode-ai/protocol": "workspace:*",
+        "@opencode-ai/schema": "workspace:*",
+      },
+      "devDependencies": {
+        "@effect/platform-node": "catalog:",
+        "@opencode-ai/core": "workspace:*",
+        "@opencode-ai/httpapi-codegen": "workspace:*",
+        "@opencode-ai/server": "workspace:*",
+        "@tsconfig/bun": "catalog:",
+        "@types/bun": "catalog:",
+        "@typescript/native-preview": "catalog:",
+        "effect": "catalog:",
+      },
+      "peerDependencies": {
+        "effect": "4.0.0-beta.83",
+      },
+      "optionalPeers": [
+        "effect",
+      ],
+    },
     "packages/console/app": {
       "name": "@opencode-ai/console-app",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "dependencies": {
         "@cloudflare/vite-plugin": "1.15.2",
         "@ibm/plex": "6.4.1",
@@ -147,7 +171,7 @@
     },
     "packages/console/core": {
       "name": "@opencode-ai/console-core",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "dependencies": {
         "@aws-sdk/client-sts": "3.782.0",
         "@jsx-email/render": "1.1.1",
@@ -174,7 +198,7 @@
     },
     "packages/console/function": {
       "name": "@opencode-ai/console-function",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "dependencies": {
         "@ai-sdk/anthropic": "3.0.82",
         "@ai-sdk/openai": "3.0.48",
@@ -196,7 +220,7 @@
     },
     "packages/console/mail": {
       "name": "@opencode-ai/console-mail",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "dependencies": {
         "@jsx-email/all": "2.2.3",
         "@jsx-email/cli": "1.4.3",
@@ -220,7 +244,7 @@
     },
     "packages/console/support": {
       "name": "@opencode-ai/console-support",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "dependencies": {
         "@cloudflare/vite-plugin": "1.15.2",
         "@opencode-ai/console-core": "workspace:*",
@@ -240,7 +264,7 @@
     },
     "packages/core": {
       "name": "@opencode-ai/core",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "bin": {
         "opencode": "./bin/opencode",
       },
@@ -276,6 +300,8 @@
         "@opencode-ai/effect-drizzle-sqlite": "workspace:*",
         "@opencode-ai/effect-sqlite-node": "workspace:*",
         "@opencode-ai/llm": "workspace:*",
+        "@opencode-ai/plugin": "workspace:*",
+        "@opencode-ai/schema": "workspace:*",
         "@openrouter/ai-sdk-provider": "2.9.0",
         "@opentelemetry/api": "1.9.0",
         "@opentelemetry/context-async-hooks": "2.6.1",
@@ -331,7 +357,7 @@
     },
     "packages/desktop": {
       "name": "@opencode-ai/desktop",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "dependencies": {
         "@zip.js/zip.js": "2.7.62",
         "effect": "catalog:",
@@ -385,7 +411,7 @@
     },
     "packages/effect-drizzle-sqlite": {
       "name": "@opencode-ai/effect-drizzle-sqlite",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "dependencies": {
         "drizzle-orm": "catalog:",
         "effect": "catalog:",
@@ -399,7 +425,7 @@
     },
     "packages/effect-sqlite-node": {
       "name": "@opencode-ai/effect-sqlite-node",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "dependencies": {
         "effect": "catalog:",
       },
@@ -411,10 +437,11 @@
     },
     "packages/enterprise": {
       "name": "@opencode-ai/enterprise",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "dependencies": {
         "@hono/standard-validator": "catalog:",
         "@opencode-ai/core": "workspace:*",
+        "@opencode-ai/session-ui": "workspace:*",
         "@opencode-ai/ui": "workspace:*",
         "@pierre/diffs": "catalog:",
         "@solidjs/meta": "catalog:",
@@ -442,7 +469,7 @@
     },
     "packages/function": {
       "name": "@opencode-ai/function",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "dependencies": {
         "@octokit/auth-app": "8.0.1",
         "@octokit/rest": "catalog:",
@@ -458,10 +485,10 @@
     },
     "packages/http-recorder": {
       "name": "@opencode-ai/http-recorder",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "dependencies": {
-        "@effect/platform-node": "4.0.0-beta.74",
-        "@effect/platform-node-shared": "4.0.0-beta.74",
+        "@effect/platform-node": "4.0.0-beta.83",
+        "@effect/platform-node-shared": "4.0.0-beta.83",
       },
       "devDependencies": {
         "@tsconfig/node22": "catalog:",
@@ -472,13 +499,26 @@
         "typescript": "catalog:",
       },
       "peerDependencies": {
-        "effect": "4.0.0-beta.74",
+        "effect": "4.0.0-beta.83",
+      },
+    },
+    "packages/httpapi-codegen": {
+      "name": "@opencode-ai/httpapi-codegen",
+      "dependencies": {
+        "effect": "catalog:",
+        "prettier": "3.6.2",
+      },
+      "devDependencies": {
+        "@tsconfig/bun": "catalog:",
+        "@types/bun": "catalog:",
+        "@typescript/native-preview": "catalog:",
       },
     },
     "packages/llm": {
       "name": "@opencode-ai/llm",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "dependencies": {
+        "@opencode-ai/schema": "workspace:*",
         "@smithy/eventstream-codec": "4.2.14",
         "@smithy/util-utf8": "4.2.2",
         "aws4fetch": "1.0.20",
@@ -495,7 +535,7 @@
     },
     "packages/opencode": {
       "name": "opencode",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "bin": {
         "opencode": "./bin/opencode",
       },
@@ -528,13 +568,14 @@
         "@effect/platform-node": "catalog:",
         "@ff-labs/fff-bun": "0.9.4",
         "@gitlab/opencode-gitlab-auth": "1.3.3",
-        "@jitl/quickjs-wasmfile-release-sync": "0.32.0",
         "@modelcontextprotocol/sdk": "1.29.0",
         "@octokit/graphql": "9.0.2",
         "@octokit/rest": "catalog:",
         "@openauthjs/openauth": "catalog:",
         "@opencode-ai/llm": "workspace:*",
         "@opencode-ai/plugin": "workspace:*",
+        "@opencode-ai/protocol": "workspace:*",
+        "@opencode-ai/schema": "workspace:*",
         "@opencode-ai/script": "workspace:*",
         "@opencode-ai/sdk": "workspace:*",
         "@opencode-ai/server": "workspace:*",
@@ -582,8 +623,6 @@
         "opencode-poe-auth": "0.0.1",
         "opentui-spinner": "catalog:",
         "partial-json": "0.1.7",
-        "quickjs-emscripten": "^0.32.0",
-        "quickjs-emscripten-core": "0.32.0",
         "remeda": "catalog:",
         "semver": "^7.6.3",
         "solid-js": "catalog:",
@@ -626,8 +665,9 @@
     },
     "packages/plugin": {
       "name": "@opencode-ai/plugin",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "dependencies": {
+        "@ai-sdk/provider": "3.0.8",
         "@opencode-ai/sdk": "workspace:*",
         "effect": "catalog:",
         "zod": "catalog:",
@@ -652,6 +692,29 @@
         "@opentui/solid",
       ],
     },
+    "packages/protocol": {
+      "name": "@opencode-ai/protocol",
+      "dependencies": {
+        "@opencode-ai/schema": "workspace:*",
+        "effect": "catalog:",
+      },
+      "devDependencies": {
+        "@tsconfig/bun": "catalog:",
+        "@types/bun": "catalog:",
+        "@typescript/native-preview": "catalog:",
+      },
+    },
+    "packages/schema": {
+      "name": "@opencode-ai/schema",
+      "dependencies": {
+        "effect": "catalog:",
+      },
+      "devDependencies": {
+        "@tsconfig/bun": "catalog:",
+        "@types/bun": "catalog:",
+        "@typescript/native-preview": "catalog:",
+      },
+    },
     "packages/script": {
       "name": "@opencode-ai/script",
       "dependencies": {
@@ -662,9 +725,23 @@
         "@types/semver": "^7.5.8",
       },
     },
+    "packages/sdk-next": {
+      "name": "@opencode-ai/sdk-next",
+      "dependencies": {
+        "@opencode-ai/client": "workspace:*",
+        "@opencode-ai/core": "workspace:*",
+        "@opencode-ai/server": "workspace:*",
+        "effect": "catalog:",
+      },
+      "devDependencies": {
+        "@tsconfig/bun": "catalog:",
+        "@types/bun": "catalog:",
+        "@typescript/native-preview": "catalog:",
+      },
+    },
     "packages/sdk/js": {
       "name": "@opencode-ai/sdk",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "dependencies": {
         "cross-spawn": "catalog:",
       },
@@ -679,9 +756,10 @@
     },
     "packages/server": {
       "name": "@opencode-ai/server",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "dependencies": {
         "@opencode-ai/core": "workspace:*",
+        "@opencode-ai/protocol": "workspace:*",
         "drizzle-orm": "catalog:",
         "effect": "catalog:",
       },
@@ -691,9 +769,53 @@
         "@typescript/native-preview": "catalog:",
       },
     },
+    "packages/session-ui": {
+      "name": "@opencode-ai/session-ui",
+      "version": "1.17.11",
+      "dependencies": {
+        "@kobalte/core": "catalog:",
+        "@opencode-ai/core": "workspace:*",
+        "@opencode-ai/sdk": "workspace:*",
+        "@opencode-ai/ui": "workspace:*",
+        "@pierre/diffs": "catalog:",
+        "@shikijs/stream": "catalog:",
+        "@shikijs/transformers": "3.9.2",
+        "@solid-primitives/bounds": "0.1.3",
+        "@solid-primitives/event-listener": "2.4.5",
+        "@solid-primitives/media": "2.3.3",
+        "@solid-primitives/resize-observer": "2.1.3",
+        "@solidjs/meta": "catalog:",
+        "@solidjs/router": "catalog:",
+        "diff": "catalog:",
+        "dompurify": "3.3.1",
+        "fuzzysort": "catalog:",
+        "katex": "0.16.27",
+        "luxon": "catalog:",
+        "marked": "catalog:",
+        "marked-katex-extension": "5.1.6",
+        "marked-shiki": "catalog:",
+        "morphdom": "2.7.8",
+        "motion": "12.34.5",
+        "remeda": "catalog:",
+        "remend": "catalog:",
+        "shiki": "catalog:",
+        "solid-js": "catalog:",
+        "solid-list": "catalog:",
+        "strip-ansi": "7.1.2",
+      },
+      "devDependencies": {
+        "@tsconfig/node22": "catalog:",
+        "@types/bun": "catalog:",
+        "@types/katex": "0.16.7",
+        "@types/luxon": "catalog:",
+        "@typescript/native-preview": "catalog:",
+        "typescript": "catalog:",
+        "vite": "catalog:",
+      },
+    },
     "packages/slack": {
       "name": "@opencode-ai/slack",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "dependencies": {
         "@opencode-ai/sdk": "workspace:*",
         "@slack/bolt": "^3.17.1",
@@ -706,7 +828,7 @@
     },
     "packages/stats/app": {
       "name": "@opencode-ai/stats-app",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "dependencies": {
         "@ibm/plex": "6.4.1",
         "@opencode-ai/stats-core": "workspace:*",
@@ -739,7 +861,7 @@
     },
     "packages/stats/core": {
       "name": "@opencode-ai/stats-core",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "dependencies": {
         "@aws-sdk/client-athena": "3.933.0",
         "@planetscale/database": "1.19.0",
@@ -758,7 +880,7 @@
     },
     "packages/stats/server": {
       "name": "@opencode-ai/stats-server",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "dependencies": {
         "@aws-sdk/client-firehose": "3.933.0",
         "@effect/platform-node": "catalog:",
@@ -777,6 +899,7 @@
     "packages/storybook": {
       "name": "@opencode-ai/storybook",
       "devDependencies": {
+        "@opencode-ai/session-ui": "workspace:*",
         "@opencode-ai/ui": "workspace:*",
         "@solidjs/meta": "catalog:",
         "@storybook/addon-a11y": "^10.2.13",
@@ -798,7 +921,7 @@
     },
     "packages/tui": {
       "name": "@opencode-ai/tui",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "dependencies": {
         "@opencode-ai/core": "workspace:*",
         "@opencode-ai/plugin": "workspace:*",
@@ -825,11 +948,9 @@
     },
     "packages/ui": {
       "name": "@opencode-ai/ui",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "dependencies": {
         "@kobalte/core": "catalog:",
-        "@opencode-ai/core": "workspace:*",
-        "@opencode-ai/sdk": "workspace:*",
         "@pierre/diffs": "catalog:",
         "@shikijs/stream": "catalog:",
         "@shikijs/transformers": "3.9.2",
@@ -874,7 +995,7 @@
     },
     "packages/web": {
       "name": "@opencode-ai/web",
-      "version": "1.17.9",
+      "version": "1.17.11",
       "dependencies": {
         "@astrojs/cloudflare": "12.6.3",
         "@astrojs/markdown-remark": "6.3.1",
@@ -938,9 +1059,9 @@
   },
   "catalog": {
     "@cloudflare/workers-types": "4.20251008.0",
-    "@effect/opentelemetry": "4.0.0-beta.74",
-    "@effect/platform-node": "4.0.0-beta.74",
-    "@effect/sql-sqlite-bun": "4.0.0-beta.74",
+    "@effect/opentelemetry": "4.0.0-beta.83",
+    "@effect/platform-node": "4.0.0-beta.83",
+    "@effect/sql-sqlite-bun": "4.0.0-beta.83",
     "@hono/standard-validator": "0.2.0",
     "@hono/zod-validator": "0.4.2",
     "@kobalte/core": "0.13.11",
@@ -976,7 +1097,7 @@
     "dompurify": "3.3.1",
     "drizzle-kit": "1.0.0-rc.2",
     "drizzle-orm": "1.0.0-rc.2",
-    "effect": "4.0.0-beta.74",
+    "effect": "4.0.0-beta.83",
     "fuzzysort": "3.1.0",
     "hono": "4.10.7",
     "hono-openapi": "1.1.2",
@@ -1331,13 +1452,13 @@
 
     "@drizzle-team/brocli": ["@drizzle-team/brocli@0.11.0", "https://registry.npmmirror.com/@drizzle-team/brocli/-/brocli-0.11.0.tgz", {}, "sha512-hD3pekGiPg0WPCCGAZmusBBJsDqGUR66Y452YgQsZOnkdQ7ViEPKuyP4huUGEZQefp8g34RRodXYmJ2TbCH+tg=="],
 
-    "@effect/opentelemetry": ["@effect/opentelemetry@4.0.0-beta.74", "https://registry.npmmirror.com/@effect/opentelemetry/-/opentelemetry-4.0.0-beta.74.tgz", { "peerDependencies": { "@opentelemetry/api": "^1.9", "@opentelemetry/api-logs": ">=0.203.0 <0.300.0", "@opentelemetry/resources": "^2.0.0", "@opentelemetry/sdk-logs": ">=0.203.0 <0.300.0", "@opentelemetry/sdk-metrics": "^2.0.0", "@opentelemetry/sdk-trace-base": "^2.0.0", "@opentelemetry/sdk-trace-node": "^2.0.0", "@opentelemetry/sdk-trace-web": "^2.0.0", "@opentelemetry/semantic-conventions": "^1.33.0", "effect": "^4.0.0-beta.74" }, "optionalPeers": ["@opentelemetry/api", "@opentelemetry/api-logs", "@opentelemetry/resources", "@opentelemetry/sdk-logs", "@opentelemetry/sdk-metrics", "@opentelemetry/sdk-trace-base", "@opentelemetry/sdk-trace-node", "@opentelemetry/sdk-trace-web"] }, "sha512-flpyqLPyr+THSe6ZCGRZl6hi+FqxbIXNSkslKGiRJAjbPabam9mSp7R3aC8biIMt6xE4Fd0LNfo4p2GplUkm2Q=="],
+    "@effect/opentelemetry": ["@effect/opentelemetry@4.0.0-beta.83", "https://registry.npmmirror.com/@effect/opentelemetry/-/opentelemetry-4.0.0-beta.83.tgz", { "peerDependencies": { "@opentelemetry/api": "^1.9", "@opentelemetry/api-logs": ">=0.203.0 <0.300.0", "@opentelemetry/resources": "^2.0.0", "@opentelemetry/sdk-logs": ">=0.203.0 <0.300.0", "@opentelemetry/sdk-metrics": "^2.0.0", "@opentelemetry/sdk-trace-base": "^2.0.0", "@opentelemetry/sdk-trace-node": "^2.0.0", "@opentelemetry/sdk-trace-web": "^2.0.0", "@opentelemetry/semantic-conventions": "^1.33.0", "effect": "^4.0.0-beta.83" }, "optionalPeers": ["@opentelemetry/api", "@opentelemetry/api-logs", "@opentelemetry/resources", "@opentelemetry/sdk-logs", "@opentelemetry/sdk-metrics", "@opentelemetry/sdk-trace-base", "@opentelemetry/sdk-trace-node", "@opentelemetry/sdk-trace-web"] }, "sha512-cPfCfp/ghu0itbX6Dqjdr4N0rbjng5ON4sUpnLHV5JJySG8zZpWmuOZLWIrfrNKT2ctYR1BYmp1aYCgkItaJLw=="],
 
-    "@effect/platform-node": ["@effect/platform-node@4.0.0-beta.74", "https://registry.npmmirror.com/@effect/platform-node/-/platform-node-4.0.0-beta.74.tgz", { "dependencies": { "@effect/platform-node-shared": "^4.0.0-beta.74", "mime": "^4.1.0", "undici": "^8.2.0" }, "peerDependencies": { "effect": "^4.0.0-beta.74", "ioredis": "^5.7.0" } }, "sha512-/W16mKqxvhWINLjufzc0log1sl57exXQfwd+em398/zKCbmU3S7snXTDMN6w0ju2TtgK35qrsoGBXEochij6Sg=="],
+    "@effect/platform-node": ["@effect/platform-node@4.0.0-beta.83", "https://registry.npmmirror.com/@effect/platform-node/-/platform-node-4.0.0-beta.83.tgz", { "dependencies": { "@effect/platform-node-shared": "^4.0.0-beta.83", "mime": "^4.1.0", "undici": "^8.2.0" }, "peerDependencies": { "effect": "^4.0.0-beta.83", "ioredis": "^5.7.0" } }, "sha512-RmpVGu/+X/Bif3/g1Rzj8oFzTOknoVB3yHCa0b179vytPpKe+Kj9ZwKNcAnKWqHUDkbSPBq1Ca60mvOHr2/+LQ=="],
 
-    "@effect/platform-node-shared": ["@effect/platform-node-shared@4.0.0-beta.74", "https://registry.npmmirror.com/@effect/platform-node-shared/-/platform-node-shared-4.0.0-beta.74.tgz", { "dependencies": { "@types/ws": "^8.18.1", "ws": "^8.20.0" }, "peerDependencies": { "effect": "^4.0.0-beta.74" } }, "sha512-C6C2hXixNcZXLaFF2u7B/FtOsqpdY7luaPuiGFBJza0P7EnYDkwaT3kB6lv7l/qctmkADc24qOsSCWIKRbC4jg=="],
+    "@effect/platform-node-shared": ["@effect/platform-node-shared@4.0.0-beta.83", "https://registry.npmmirror.com/@effect/platform-node-shared/-/platform-node-shared-4.0.0-beta.83.tgz", { "dependencies": { "@types/ws": "^8.18.1", "ws": "^8.20.0" }, "peerDependencies": { "effect": "^4.0.0-beta.83" } }, "sha512-+yr/+PJmKTgmJq1QOINSBPgLu7Cjc4CZcotBXnGjyDEizOmimFgTkN2B8PBJAKIKUWYWfobjXqC+58/VhhPKAw=="],
 
-    "@effect/sql-sqlite-bun": ["@effect/sql-sqlite-bun@4.0.0-beta.74", "https://registry.npmmirror.com/@effect/sql-sqlite-bun/-/sql-sqlite-bun-4.0.0-beta.74.tgz", { "peerDependencies": { "effect": "^4.0.0-beta.74" } }, "sha512-RVMRVY7NhSoAp9cAAyy4TT6dt6NNZjOpWeqticoho9HNBukxQSUcu/kjcz4Iq9eoQfXadmepu8kZqtdZULM/fg=="],
+    "@effect/sql-sqlite-bun": ["@effect/sql-sqlite-bun@4.0.0-beta.83", "https://registry.npmmirror.com/@effect/sql-sqlite-bun/-/sql-sqlite-bun-4.0.0-beta.83.tgz", { "peerDependencies": { "effect": "^4.0.0-beta.83" } }, "sha512-6OaxLsWffxkh9pXYUSyj/AxjVb9URY2rG9U6atjxClWy30Jx77R9Pm3Rrc7cQ63kQurePavEw1bQbzQ/SILiQQ=="],
 
     "@electron/asar": ["@electron/asar@3.4.1", "https://registry.npmmirror.com/@electron/asar/-/asar-3.4.1.tgz", { "dependencies": { "commander": "^5.0.0", "glob": "^7.1.6", "minimatch": "^3.0.4" }, "bin": { "asar": "bin/asar.js" } }, "sha512-i4/rNPRS84t0vSRa2HorerGRXWyF4vThfHesw0dmcWHp+cspK743UanA0suA5Q5y8kzY2y6YKrvbIUn69BCAiA=="],
 
@@ -1563,16 +1684,6 @@
 
     "@isaacs/string-locale-compare": ["@isaacs/string-locale-compare@1.1.0", "https://registry.npmmirror.com/@isaacs/string-locale-compare/-/string-locale-compare-1.1.0.tgz", {}, "sha512-SQ7Kzhh9+D+ZW9MA0zkYv3VXhIDNx+LzM6EJ+/65I3QY+enU6Itte7E5XX7EWrqLW2FN4n06GWzBnPoC3th2aQ=="],
 
-    "@jitl/quickjs-ffi-types": ["@jitl/quickjs-ffi-types@0.32.0", "https://registry.npmmirror.com/@jitl/quickjs-ffi-types/-/quickjs-ffi-types-0.32.0.tgz", {}, "sha512-v9T+GQpmk43VDJ7d72sf0Nexhk+ArvtUihW27dy7lqAl0zBObFKtSBBIm5RBjwIhE8VwsPPm9PNuvPvNqLWUEg=="],
-
-    "@jitl/quickjs-wasmfile-debug-asyncify": ["@jitl/quickjs-wasmfile-debug-asyncify@0.32.0", "https://registry.npmmirror.com/@jitl/quickjs-wasmfile-debug-asyncify/-/quickjs-wasmfile-debug-asyncify-0.32.0.tgz", { "dependencies": { "@jitl/quickjs-ffi-types": "0.32.0" } }, "sha512-EX8zbXwGqCgAE764M+qvkHtyXDi/FUoMBea0JnES7vCM3P7a2+EOZOjGv85wtZ2sJhI1oJ+nekmqpOODFDY+hw=="],
-
-    "@jitl/quickjs-wasmfile-debug-sync": ["@jitl/quickjs-wasmfile-debug-sync@0.32.0", "https://registry.npmmirror.com/@jitl/quickjs-wasmfile-debug-sync/-/quickjs-wasmfile-debug-sync-0.32.0.tgz", { "dependencies": { "@jitl/quickjs-ffi-types": "0.32.0" } }, "sha512-LeYWrPGC1uNCTBWvibo3ZLJj0CSVNYUXvJpXMCmuQ5Sap2cCACc3uvGvYV4homHHBAzfw5akoTqMMS4YFRtw+Q=="],
-
-    "@jitl/quickjs-wasmfile-release-asyncify": ["@jitl/quickjs-wasmfile-release-asyncify@0.32.0", "https://registry.npmmirror.com/@jitl/quickjs-wasmfile-release-asyncify/-/quickjs-wasmfile-release-asyncify-0.32.0.tgz", { "dependencies": { "@jitl/quickjs-ffi-types": "0.32.0" } }, "sha512-3oSwPfja12ICz4aIblB58cuY8JlEq5Txt8Cut4VLo+LH47QN+mzCnSgnbB03hWzg1LBcc+VyyI9UOag7a1NF+Q=="],
-
-    "@jitl/quickjs-wasmfile-release-sync": ["@jitl/quickjs-wasmfile-release-sync@0.32.0", "https://registry.npmmirror.com/@jitl/quickjs-wasmfile-release-sync/-/quickjs-wasmfile-release-sync-0.32.0.tgz", { "dependencies": { "@jitl/quickjs-ffi-types": "0.32.0" } }, "sha512-BKNDI/TPBfGlLNGYpLrhcDGXmIk4xHm4MRAisOBnOzpXVn9HZWsfmMAc9WMBrAHjvvds6HOikKeaOBKdPdpVrg=="],
-
     "@joshwooding/vite-plugin-react-docgen-typescript": ["@joshwooding/vite-plugin-react-docgen-typescript@0.7.0", "https://registry.npmmirror.com/@joshwooding/vite-plugin-react-docgen-typescript/-/vite-plugin-react-docgen-typescript-0.7.0.tgz", { "dependencies": { "glob": "^13.0.1", "react-docgen-typescript": "^2.2.2" }, "peerDependencies": { "typescript": ">= 4.3.x", "vite": "^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0" }, "optionalPeers": ["typescript"] }, "sha512-qvsTEwEFefhdirGOPnu9Wp6ChfIwy2dBCRuETU3uE+4cC+PFoxMSiiEhxk4lOluA34eARHA0OxqsEUYDqRMgeQ=="],
 
     "@jridgewell/gen-mapping": ["@jridgewell/gen-mapping@0.3.13", "https://registry.npmmirror.com/@jridgewell/gen-mapping/-/gen-mapping-0.3.13.tgz", { "dependencies": { "@jridgewell/sourcemap-codec": "^1.5.0", "@jridgewell/trace-mapping": "^0.3.24" } }, "sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA=="],
@@ -1785,6 +1896,8 @@
 
     "@opencode-ai/cli": ["@opencode-ai/cli@workspace:packages/cli"],
 
+    "@opencode-ai/client": ["@opencode-ai/client@workspace:packages/client"],
+
     "@opencode-ai/console-app": ["@opencode-ai/console-app@workspace:packages/console/app"],
 
     "@opencode-ai/console-core": ["@opencode-ai/console-core@workspace:packages/console/core"],
@@ -1811,15 +1924,25 @@
 
     "@opencode-ai/http-recorder": ["@opencode-ai/http-recorder@workspace:packages/http-recorder"],
 
+    "@opencode-ai/httpapi-codegen": ["@opencode-ai/httpapi-codegen@workspace:packages/httpapi-codegen"],
+
     "@opencode-ai/llm": ["@opencode-ai/llm@workspace:packages/llm"],
 
     "@opencode-ai/plugin": ["@opencode-ai/plugin@workspace:packages/plugin"],
+
+    "@opencode-ai/protocol": ["@opencode-ai/protocol@workspace:packages/protocol"],
+
+    "@opencode-ai/schema": ["@opencode-ai/schema@workspace:packages/schema"],
 
     "@opencode-ai/script": ["@opencode-ai/script@workspace:packages/script"],
 
     "@opencode-ai/sdk": ["@opencode-ai/sdk@workspace:packages/sdk/js"],
 
+    "@opencode-ai/sdk-next": ["@opencode-ai/sdk-next@workspace:packages/sdk-next"],
+
     "@opencode-ai/server": ["@opencode-ai/server@workspace:packages/server"],
+
+    "@opencode-ai/session-ui": ["@opencode-ai/session-ui@workspace:packages/session-ui"],
 
     "@opencode-ai/slack": ["@opencode-ai/slack@workspace:packages/slack"],
 
@@ -3379,7 +3502,7 @@
 
     "ee-first": ["ee-first@1.1.1", "https://registry.npmmirror.com/ee-first/-/ee-first-1.1.1.tgz", {}, "sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow=="],
 
-    "effect": ["effect@4.0.0-beta.74", "https://registry.npmmirror.com/effect/-/effect-4.0.0-beta.74.tgz", { "dependencies": { "@standard-schema/spec": "^1.1.0", "fast-check": "^4.8.0", "find-my-way-ts": "^0.1.6", "ini": "^7.0.0", "kubernetes-types": "^1.30.0", "msgpackr": "^2.0.1", "multipasta": "^0.2.7", "toml": "^4.1.1", "uuid": "^14.0.0", "yaml": "^2.9.0" } }, "sha512-Yx+Kh12U+i2FmjwEfKs+ePFmpMd43RPD1oGqc/VraSS9bYzvF0Ff3PojwEFEVEewp8xc92Uxu28gTspU4qyvHA=="],
+    "effect": ["effect@4.0.0-beta.83", "https://registry.npmmirror.com/effect/-/effect-4.0.0-beta.83.tgz", { "dependencies": { "@standard-schema/spec": "^1.1.0", "fast-check": "^4.8.0", "find-my-way-ts": "^0.1.6", "ini": "^7.0.0", "kubernetes-types": "^1.30.0", "msgpackr": "^2.0.1", "multipasta": "^0.2.7", "toml": "^4.1.1", "uuid": "^14.0.0", "yaml": "^2.9.0" } }, "sha512-0wsak8RtgGAr9UWSbVDgJHZcUqMSvicHcvaZv1MbMM7MCGgW4Rn/137J1MHQbwYPcwYGxT/IqehFd+UbYuj78w=="],
 
     "ejs": ["ejs@3.1.10", "https://registry.npmmirror.com/ejs/-/ejs-3.1.10.tgz", { "dependencies": { "jake": "^10.8.5" }, "bin": { "ejs": "bin/cli.js" } }, "sha512-UeJmFfOrAQS8OJWPZ4qtgHyWExa088/MtK5UEyoJGFH67cDEXkZSviOiKRCZ4Xij0zxI3JECgYs3oKx+AizQBA=="],
 
@@ -4659,10 +4782,6 @@
 
     "quick-lru": ["quick-lru@5.1.1", "https://registry.npmmirror.com/quick-lru/-/quick-lru-5.1.1.tgz", {}, "sha512-WuyALRjWPDGtt/wzJiadO5AXY+8hZ80hVpe6MyivgraREW751X3SbhRvG3eLKOYN+8VEvqLcf3wdnt44Z4S4SA=="],
 
-    "quickjs-emscripten": ["quickjs-emscripten@0.32.0", "https://registry.npmmirror.com/quickjs-emscripten/-/quickjs-emscripten-0.32.0.tgz", { "dependencies": { "@jitl/quickjs-wasmfile-debug-asyncify": "0.32.0", "@jitl/quickjs-wasmfile-debug-sync": "0.32.0", "@jitl/quickjs-wasmfile-release-asyncify": "0.32.0", "@jitl/quickjs-wasmfile-release-sync": "0.32.0", "quickjs-emscripten-core": "0.32.0" } }, "sha512-So0Sqw869y/S2oE3Nuc0uT3Dhqgvsj8FSrwBdsuTosVsG8ME5/OcudU1GxsrIFdFABgy17GHnTVO9TYV/bLQcA=="],
-
-    "quickjs-emscripten-core": ["quickjs-emscripten-core@0.32.0", "https://registry.npmmirror.com/quickjs-emscripten-core/-/quickjs-emscripten-core-0.32.0.tgz", { "dependencies": { "@jitl/quickjs-ffi-types": "0.32.0" } }, "sha512-QFnPfjFey8EqknSrSxe1hZrf1/8z7/6s1QzGOmKo6++02r7QRRX7ZoyNaZh7JuVjWsVW87KnQrbZqnHkOAzUyg=="],
-
     "radix3": ["radix3@1.1.2", "https://registry.npmmirror.com/radix3/-/radix3-1.1.2.tgz", {}, "sha512-b484I/7b8rDEdSDKckSSBA8knMpcdsXudlE/LNL639wFoHKwLbEkQFZHWEYwDC0wa0FKUcCY+GAF73Z7wxNVFA=="],
 
     "range-parser": ["range-parser@1.2.1", "https://registry.npmmirror.com/range-parser/-/range-parser-1.2.1.tgz", {}, "sha512-Hrgsx+orqoygnmhFbKaHE6c296J+HTAQXoxEF6gNupROmmGJRoyzfG3ccAveqCBrwr/2yxQ5BVd/GTl5agOwSg=="],
@@ -5845,6 +5964,8 @@
 
     "@opencode-ai/llm/@smithy/util-utf8": ["@smithy/util-utf8@4.2.2", "https://registry.npmmirror.com/@smithy/util-utf8/-/util-utf8-4.2.2.tgz", { "dependencies": { "@smithy/util-buffer-from": "^4.2.2", "tslib": "^2.6.2" } }, "sha512-75MeYpjdWRe8M5E3AW0O4Cx3UadweS+cwdXjwYGBW5h/gxxnbeZ877sLPX/ZJA9GVTlL/qG0dXP29JWFCD1Ayw=="],
 
+    "@opencode-ai/session-ui/@solid-primitives/resize-observer": ["@solid-primitives/resize-observer@2.1.3", "https://registry.npmmirror.com/@solid-primitives/resize-observer/-/resize-observer-2.1.3.tgz", { "dependencies": { "@solid-primitives/event-listener": "^2.4.3", "@solid-primitives/rootless": "^1.5.2", "@solid-primitives/static-store": "^0.1.2", "@solid-primitives/utils": "^6.3.2" }, "peerDependencies": { "solid-js": "^1.6.12" } }, "sha512-zBLje5E06TgOg93S7rGPldmhDnouNGhvfZVKOp+oG2XU8snA+GoCSSCz1M+jpNAg5Ek2EakU5UVQqL152WmdXQ=="],
+
     "@opencode-ai/ui/@solid-primitives/resize-observer": ["@solid-primitives/resize-observer@2.1.3", "https://registry.npmmirror.com/@solid-primitives/resize-observer/-/resize-observer-2.1.3.tgz", { "dependencies": { "@solid-primitives/event-listener": "^2.4.3", "@solid-primitives/rootless": "^1.5.2", "@solid-primitives/static-store": "^0.1.2", "@solid-primitives/utils": "^6.3.2" }, "peerDependencies": { "solid-js": "^1.6.12" } }, "sha512-zBLje5E06TgOg93S7rGPldmhDnouNGhvfZVKOp+oG2XU8snA+GoCSSCz1M+jpNAg5Ek2EakU5UVQqL152WmdXQ=="],
 
     "@opencode-ai/web/@shikijs/transformers": ["@shikijs/transformers@3.20.0", "https://registry.npmmirror.com/@shikijs/transformers/-/transformers-3.20.0.tgz", { "dependencies": { "@shikijs/core": "3.20.0", "@shikijs/types": "3.20.0" } }, "sha512-PrHHMRr3Q5W1qB/42kJW6laqFyWdhrPF2hNR9qjOm1xcSiAO3hAHo7HaVyHE6pMyevmy3i51O8kuGGXC78uK3g=="],
@@ -5914,6 +6035,10 @@
     "@solidjs/start/shiki": ["shiki@1.29.2", "https://registry.npmmirror.com/shiki/-/shiki-1.29.2.tgz", { "dependencies": { "@shikijs/core": "1.29.2", "@shikijs/engine-javascript": "1.29.2", "@shikijs/engine-oniguruma": "1.29.2", "@shikijs/langs": "1.29.2", "@shikijs/themes": "1.29.2", "@shikijs/types": "1.29.2", "@shikijs/vscode-textmate": "^10.0.1", "@types/hast": "^3.0.4" } }, "sha512-njXuliz/cP+67jU2hukkxCNuH1yUi4QfdZZY+sMr5PPrIyXSu5iTb/qYC4BiWWB0vZ+7TbdvYUCeL23zpwCfbg=="],
 
     "@solidjs/start/vite": ["vite@7.1.10", "https://registry.npmmirror.com/vite/-/vite-7.1.10.tgz", { "dependencies": { "esbuild": "^0.25.0", "fdir": "^6.5.0", "picomatch": "^4.0.3", "postcss": "^8.5.6", "rollup": "^4.43.0", "tinyglobby": "^0.2.15" }, "optionalDependencies": { "fsevents": "~2.3.3" }, "peerDependencies": { "@types/node": "^20.19.0 || >=22.12.0", "jiti": ">=1.21.0", "less": "^4.0.0", "lightningcss": "^1.21.0", "sass": "^1.70.0", "sass-embedded": "^1.70.0", "stylus": ">=0.54.8", "sugarss": "^5.0.0", "terser": "^5.16.0", "tsx": "^4.8.1", "yaml": "^2.4.2" }, "optionalPeers": ["@types/node", "jiti", "less", "lightningcss", "sass", "sass-embedded", "stylus", "sugarss", "terser", "tsx", "yaml"], "bin": { "vite": "bin/vite.js" } }, "sha512-CmuvUBzVJ/e3HGxhg6cYk88NGgTnBoOo7ogtfJJ0fefUWAxN/WDSUa50o+oVBxuIhO8FoEZW0j2eW7sfjs5EtA=="],
+
+    "@standard-community/standard-json/effect": ["effect@4.0.0-beta.74", "https://registry.npmmirror.com/effect/-/effect-4.0.0-beta.74.tgz", { "dependencies": { "@standard-schema/spec": "^1.1.0", "fast-check": "^4.8.0", "find-my-way-ts": "^0.1.6", "ini": "^7.0.0", "kubernetes-types": "^1.30.0", "msgpackr": "^2.0.1", "multipasta": "^0.2.7", "toml": "^4.1.1", "uuid": "^14.0.0", "yaml": "^2.9.0" } }, "sha512-Yx+Kh12U+i2FmjwEfKs+ePFmpMd43RPD1oGqc/VraSS9bYzvF0Ff3PojwEFEVEewp8xc92Uxu28gTspU4qyvHA=="],
+
+    "@standard-community/standard-openapi/effect": ["effect@4.0.0-beta.74", "https://registry.npmmirror.com/effect/-/effect-4.0.0-beta.74.tgz", { "dependencies": { "@standard-schema/spec": "^1.1.0", "fast-check": "^4.8.0", "find-my-way-ts": "^0.1.6", "ini": "^7.0.0", "kubernetes-types": "^1.30.0", "msgpackr": "^2.0.1", "multipasta": "^0.2.7", "toml": "^4.1.1", "uuid": "^14.0.0", "yaml": "^2.9.0" } }, "sha512-Yx+Kh12U+i2FmjwEfKs+ePFmpMd43RPD1oGqc/VraSS9bYzvF0Ff3PojwEFEVEewp8xc92Uxu28gTspU4qyvHA=="],
 
     "@storybook/csf-plugin/unplugin": ["unplugin@2.3.11", "https://registry.npmmirror.com/unplugin/-/unplugin-2.3.11.tgz", { "dependencies": { "@jridgewell/remapping": "^2.3.5", "acorn": "^8.15.0", "picomatch": "^4.0.3", "webpack-virtual-modules": "^0.6.2" } }, "sha512-5uKD0nqiYVzlmCRs01Fhs2BdkEgBS3SAVP6ndrBsuK42iC2+JHyxM05Rm9G8+5mkmRtzMZGY8Ct5+mliZxU/Ww=="],
 
@@ -6716,6 +6841,10 @@
     "@solidjs/start/shiki/@shikijs/themes": ["@shikijs/themes@1.29.2", "https://registry.npmmirror.com/@shikijs/themes/-/themes-1.29.2.tgz", { "dependencies": { "@shikijs/types": "1.29.2" } }, "sha512-i9TNZlsq4uoyqSbluIcZkmPL9Bfi3djVxRnofUHwvx/h6SRW3cwgBC5SML7vsDcWyukY0eCzVN980rqP6qNl9g=="],
 
     "@solidjs/start/shiki/@shikijs/types": ["@shikijs/types@1.29.2", "https://registry.npmmirror.com/@shikijs/types/-/types-1.29.2.tgz", { "dependencies": { "@shikijs/vscode-textmate": "^10.0.1", "@types/hast": "^3.0.4" } }, "sha512-VJjK0eIijTZf0QSTODEXCqinjBn0joAHQ+aPSBzrv4O2d/QSbsMw+ZeSRx03kV34Hy7NzUvV/7NqfYGRLrASmw=="],
+
+    "@standard-community/standard-json/effect/@standard-schema/spec": ["@standard-schema/spec@1.1.0", "https://registry.npmmirror.com/@standard-schema/spec/-/spec-1.1.0.tgz", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
+
+    "@standard-community/standard-openapi/effect/@standard-schema/spec": ["@standard-schema/spec@1.1.0", "https://registry.npmmirror.com/@standard-schema/spec/-/spec-1.1.0.tgz", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 
     "@storybook/csf-plugin/unplugin/webpack-virtual-modules": ["webpack-virtual-modules@0.6.2", "https://registry.npmmirror.com/webpack-virtual-modules/-/webpack-virtual-modules-0.6.2.tgz", {}, "sha512-66/V2i5hQanC51vBQKPH4aI8NMAcBW59FVBs+rC7eGHupMyfn34q7rZIE+ETlJ+XTevqfUhVVBgSUNSW2flEUQ=="],
 
