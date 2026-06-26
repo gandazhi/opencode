@@ -541,7 +541,7 @@ export const layer = Layer.effect(
 
       yield* events.publish(WorkflowStarted, { sessionID: input.sessionID, runID, name })
 
-      type SpawnResult = { value: unknown; childID?: string; reason: FailReason; cost?: number; tokens?: WorkflowTokens }
+      type SpawnResult = { value: unknown; childID?: string; reason: FailReason; cost?: number; tokens?: WorkflowTokens; errorMessage?: string }
 
       const spawnShared = async (
         key: string,
@@ -675,9 +675,10 @@ export const layer = Layer.effect(
         else {
           entry.failed++
           publishAgentFailed(o, reason, { errorMessage })
+          if (errorMessage) Effect.runFork(Effect.logError("workflow agent failed", { runID, key, reason, errorMessage }))
         }
         scheduleFlush(entry)
-        return { value, childID, reason, cost, tokens }
+        return { value, childID, reason, cost, tokens, errorMessage }
       }
 
       const agent: HostFn = (prompt: unknown, opts?: unknown) => {
@@ -727,6 +728,7 @@ export const layer = Layer.effect(
                 ts: endTs,
                 ...(sr.cost !== undefined ? { cost: sr.cost } : {}),
                 ...(sr.tokens ? { tokens: sr.tokens } : {}),
+                ...(!ok && sr.errorMessage ? { errorMessage: sr.errorMessage } : {}),
                 pass,
               },
             ]).pipe(Effect.ignore),
@@ -738,6 +740,7 @@ export const layer = Layer.effect(
               key,
               status: ok ? ("succeeded" as const) : ("failed" as const),
               reason: ok ? undefined : sr.reason,
+              ...(!ok && sr.errorMessage ? { errorMessage: sr.errorMessage } : {}),
               ...(sr.cost !== undefined ? { cost: sr.cost } : {}),
               ...(sr.tokens ? { tokens: sr.tokens } : {}),
             }),

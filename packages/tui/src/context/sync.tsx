@@ -324,7 +324,7 @@ export const {
                   reason,
                   retry,
                   endedAt: Date.now(),
-                  ...(cost !== undefined ? { cost } : {}),
+                  ...(typeof cost === "number" ? { cost } : {}),
                   ...(tokens ? { tokens } : {}),
                 }),
               }

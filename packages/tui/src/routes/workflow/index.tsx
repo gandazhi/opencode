@@ -32,8 +32,8 @@ function formatDuration(ms: number): string {
   return `${(ms / 60000).toFixed(1)}m`
 }
 
-function formatCost(cost?: number): string {
-  if (cost === undefined) return ""
+function formatCost(cost?: number | null): string {
+  if (cost == null) return ""
   return `$${cost.toFixed(2)}`
 }
 
@@ -207,7 +207,7 @@ export function WorkflowDetail() {
                   <text fg={theme.textMuted} flexShrink={0}>
                     {formatDuration(agentDuration())}{" "}
                   </text>
-                  <Show when={agent.cost !== undefined}>
+                  <Show when={agent.cost != null}>
                     <text fg={theme.textMuted} flexShrink={0}>
                       {formatCost(agent.cost)}{" "}
                     </text>

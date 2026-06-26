@@ -67,6 +67,7 @@ export type AgentRecord = {
   phase?: string
   status: "running" | "succeeded" | "failed"
   reason?: string
+  errorMessage?: string
   retry?: number
   startedAt: number
   endedAt?: number
@@ -77,7 +78,7 @@ export type AgentRecord = {
 export type JournalEvent =
   | { t: "agent"; key: string; result: unknown; pass: number }
   | { t: "agent_start"; key: string; sessionID?: string; agentType: string; label?: string; phase?: string; ts: number; pass: number }
-  | { t: "agent_end"; key: string; ok: boolean; reason?: string; retry?: number; cost?: number; tokens?: WorkflowTokens; ts: number; pass: number }
+  | { t: "agent_end"; key: string; ok: boolean; reason?: string; retry?: number; cost?: number; tokens?: WorkflowTokens; errorMessage?: string; ts: number; pass: number }
   | { t: "log"; msg: string; pass: number }
   | { t: "phase"; title: string; pass: number }
 
@@ -284,6 +285,7 @@ const loadJournal = (runID: string): Effect.Effect<JournalLoad> =>
             existing.status = ev.ok ? "succeeded" : "failed"
             existing.endedAt = ev.ts
             existing.reason = ev.reason
+            existing.errorMessage = ev.errorMessage
             existing.retry = ev.retry
             existing.cost = ev.cost
             existing.tokens = ev.tokens

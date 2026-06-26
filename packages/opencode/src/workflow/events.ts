@@ -106,6 +106,7 @@ export const WorkflowAgentEnded = EventV2.define({
     key: Schema.String,
     status: Schema.Literals(["succeeded", "failed"]),
     reason: Schema.optional(Schema.String),
+    errorMessage: Schema.optional(Schema.String),
     retry: Schema.optional(Schema.Number),
     cost: Schema.optional(Schema.Number),
     tokens: Schema.optional(
