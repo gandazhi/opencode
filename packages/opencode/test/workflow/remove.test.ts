@@ -9,7 +9,7 @@ import { ProjectTable } from "@opencode-ai/core/project/sql"
 import { ProjectV2 } from "@opencode-ai/core/project"
 import { SessionID } from "@/session/schema"
 
-const dbLayer = Database.defaultLayer
+const dbLayer = Database.layerFromPath(":memory:")
 const runDb = (effect: Effect.Effect<unknown, unknown, unknown>) =>
   (effect as Effect.Effect<unknown, unknown, never>).pipe(Effect.provide(dbLayer), Effect.scoped, Effect.runPromise) as Promise<unknown>
 

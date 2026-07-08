@@ -26,10 +26,20 @@ const mockAgent = Layer.succeed(
   }),
 )
 
-const testLayer = Layer.mergeAll(TestConfig.layer(), Truncate.defaultLayer, mockAgent)
+const mockTruncate = Layer.succeed(
+  Truncate.Service,
+  Truncate.Service.of({
+    cleanup: () => Effect.void,
+    write: (text: string) => Effect.succeed(text),
+    output: (text: string) => Effect.succeed({ content: text, truncated: false }),
+    limits: () => Effect.succeed({ maxLines: 2000, maxBytes: 51200 }),
+  }),
+)
+
+const testLayer = Layer.mergeAll(TestConfig.layer(), mockTruncate, mockAgent)
 const configLayer = (get: () => Effect.Effect<unknown>) =>
   Layer.mergeAll(
-    Truncate.defaultLayer,
+    mockTruncate,
     mockAgent,
     TestConfig.layer({ get: get as never }),
   )

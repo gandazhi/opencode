@@ -40,7 +40,7 @@ const prompts = Layer.succeed(
   }),
 )
 
-const dependencies = Layer.mergeAll(Database.defaultLayer, TestConfig.layer(), events, prompts)
+const dependencies = Layer.mergeAll(Database.layerFromPath(":memory:"), TestConfig.layer(), events, prompts)
 const layer = Layer.provideMerge(WorkflowRuntime.layer, dependencies)
 
 const run = <A, E, R>(effect: Effect.Effect<A, E, R>) =>

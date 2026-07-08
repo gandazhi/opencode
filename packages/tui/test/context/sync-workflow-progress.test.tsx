@@ -9,6 +9,7 @@ import { ExitProvider } from "../../src/context/exit"
 import { KVProvider } from "../../src/context/kv"
 import { SDKProvider } from "../../src/context/sdk"
 import { ProjectProvider } from "../../src/context/project"
+import { PermissionProvider } from "../../src/context/permission"
 import { SyncProvider, useSync } from "../../src/context/sync"
 import { ThemeProvider } from "../../src/context/theme"
 import { TuiConfigProvider } from "../../src/config"
@@ -47,11 +48,12 @@ async function mountSync(state: string) {
           <KVProvider>
             <TuiConfigProvider config={createTuiResolvedConfig()}>
               <SDKProvider url="http://test" directory={directory} fetch={calls.fetch} events={events.source}>
-                <ProjectProvider>
-                  <SyncProvider>
-                    <ThemeProvider mode="dark"><Probe /></ThemeProvider>
-                  </SyncProvider>
-                </ProjectProvider>
+                <PermissionProvider>
+                  <ProjectProvider>
+                    <SyncProvider>
+                    </SyncProvider>
+                  </ProjectProvider>
+                </PermissionProvider>
               </SDKProvider>
             </TuiConfigProvider>
           </KVProvider>

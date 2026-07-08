@@ -169,12 +169,6 @@ export const layer = Layer.effect(
   }),
 )
 
-export const defaultLayer = layer.pipe(
-  Layer.provide(Provider.defaultLayer),
-  Layer.provide(Auth.defaultLayer),
-  Layer.provide(EventV2Bridge.defaultLayer),
-)
-
-export const node = LayerNode.make(layer, [Provider.node, Auth.node, EventV2Bridge.node])
+export const node = LayerNode.make({ service: Service, layer: layer, deps: [Provider.node, Auth.node, EventV2Bridge.node] })
 
 export * as Goal from "./goal"

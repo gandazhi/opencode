@@ -1,4 +1,5 @@
 import { Context, Deferred, Effect, Exit, Fiber, Layer, Schema, Scope } from "effect"
+import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import os from "node:os"
 import { createHash } from "node:crypto"
 import { Database } from "@opencode-ai/core/database/database"
@@ -1076,11 +1077,10 @@ export const layer = Layer.effect(
   }),
 )
 
-export const defaultLayer = layer.pipe(
-  Layer.provide(Config.defaultLayer),
-  Layer.provide(Database.defaultLayer),
-  Layer.provide(EventV2Bridge.defaultLayer),
-  Layer.provide(SessionPrompt.defaultLayer),
-)
+export const node = LayerNode.make({
+  service: Service,
+  layer: layer,
+  deps: [Config.node, Database.node, EventV2Bridge.node, SessionPrompt.node],
+})
 
 export * as WorkflowRuntime from "./runtime"

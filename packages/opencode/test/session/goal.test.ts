@@ -1,6 +1,5 @@
 import { describe, expect } from "bun:test"
 import { Deferred, Effect, Layer } from "effect"
-import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
 import { Goal } from "@/session/goal"
 import { SessionID } from "@/session/schema"
 import { Provider } from "@/provider/provider"
@@ -12,15 +11,37 @@ import { testEffect, awaitWithTimeout } from "../lib/effect"
 const stubProvider = Layer.mock(Provider.Service)({})
 const stubAuth = Layer.mock(Auth.Service)({})
 
+// Minimal in-memory event bus: routes publish() to listen() subscribers so the
+// goal event-publishing tests work without the removed EventV2Bridge.defaultLayer.
+const listeners: Array<(event: { type: string; data: unknown }) => Effect.Effect<void>> = []
+const stubEventV2Bridge = Layer.succeed(
+  EventV2Bridge.Service,
+  ({
+    publish: ((_def: { type: string }, data: unknown) =>
+      Effect.sync(() => {
+        const event = { type: _def.type, data }
+        for (const l of listeners) Effect.runSync(l(event))
+        return data
+      })) as never,
+    listen: ((listener: (event: { type: string; data: unknown }) => Effect.Effect<void>) =>
+      Effect.sync(() => {
+        listeners.push(listener)
+        return Effect.sync(() => {
+          const i = listeners.indexOf(listener)
+          if (i >= 0) listeners.splice(i, 1)
+        })
+      })) as never,
+  }) as never,
+)
+
 const it = testEffect(
   Layer.mergeAll(
     Goal.layer.pipe(
-      Layer.provideMerge(EventV2Bridge.defaultLayer),
+      Layer.provideMerge(stubEventV2Bridge),
       Layer.provide(stubProvider),
       Layer.provide(stubAuth),
     ),
     testInstanceStoreLayer,
-    CrossSpawnSpawner.defaultLayer,
   ),
 )
 
