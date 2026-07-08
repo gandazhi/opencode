@@ -17,6 +17,7 @@ import { WriteTool } from "./write"
 import { InvalidTool } from "./invalid"
 import { SkillTool } from "./skill"
 import { WorkflowTool } from "./workflow"
+import { listSavedWorkflows } from "@/workflow/resolve"
 import * as Tool from "./tool"
 import { Config } from "@/config/config"
 import { type ToolContext as PluginToolContext, type ToolDefinition } from "@opencode-ai/plugin"
@@ -268,6 +269,17 @@ export const layer = Layer.effect(
       return ["Available agent types and the tools they have access to:", description].join("\n")
     })
 
+    const describeWorkflows = Effect.fn("ToolRegistry.describeWorkflows")(function* () {
+      const ctx = yield* InstanceState.context
+      const saved = yield* Effect.promise(() => listSavedWorkflows(ctx.worktree))
+      if (!saved.length) return undefined
+      const list = saved.map((w) => `- ${w.name}: ${w.description}`)
+      return [
+        "Saved workflows available by `name` (resolved from .opencode/workflows/ or .claude/workflows/):",
+        ...list,
+      ].join("\n")
+    })
+
     const tools: Interface["tools"] = Effect.fn("ToolRegistry.tools")(function* (input) {
       const filtered = (yield* all()).filter((tool) => {
         if (tool.id === WebSearchTool.id) {
@@ -297,7 +309,11 @@ export const layer = Layer.effect(
               : undefined
           return {
             id: tool.id,
-            description: [output.description, tool.id === TaskTool.id ? yield* describeTask(input.agent) : undefined]
+            description: [
+              output.description,
+              tool.id === TaskTool.id ? yield* describeTask(input.agent) : undefined,
+              tool.id === WorkflowTool.id ? yield* describeWorkflows() : undefined,
+            ]
               .filter(Boolean)
               .join("\n"),
             parameters: output.parameters,

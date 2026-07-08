@@ -5,6 +5,8 @@ import { PositiveInt } from "@opencode-ai/core/schema"
 import { Config } from "@/config/config"
 import { workflowRef } from "@/workflow/runtime-ref"
 import { BuiltinWorkflow } from "@/workflow/builtin"
+import { resolveWorkflowScript } from "@/workflow/resolve"
+import { InstanceState } from "@/effect/instance-state"
 import type { SessionID } from "@/session/schema"
 
 const id = "workflow"
@@ -66,7 +68,19 @@ export const WorkflowTool = Tool.define<typeof parameters, Metadata, Config.Serv
             new Error("workflow run: provide either `name` (a built-in) or `script` (inline), not both."),
           )
         }
-        const script = input.name ? BuiltinWorkflow.get(input.name)?.script : input.script
+        let script: string | undefined
+        if (input.name) {
+          // Built-in first (in-memory, no instance context needed); only fall
+          // back to the on-disk saved-workflow search when the built-in misses.
+          script = BuiltinWorkflow.get(input.name)?.script
+          if (!script) {
+            const instance = yield* InstanceState.context
+            const searchStart = input.workspace ?? instance.worktree
+            script = (yield* Effect.promise(() => resolveWorkflowScript(input.name!, searchStart, instance.worktree))) ?? undefined
+          }
+        } else {
+          script = input.script
+        }
         if (!script) {
           const known = BuiltinWorkflow.list()
             .map((w) => w.name)
@@ -74,8 +88,8 @@ export const WorkflowTool = Tool.define<typeof parameters, Metadata, Config.Serv
           return yield* Effect.fail(
             new Error(
               input.name
-                ? `Unknown built-in workflow "${input.name}". Known: ${known || "(none)"}.`
-                : "workflow run requires either `name` (a built-in) or `script` (inline).",
+                ? `Unknown workflow "${input.name}". Provide a built-in (known: ${known || "(none)"}), a name resolved from .opencode/workflows/ or .claude/workflows/, or use \`script\` for inline.`
+                : "workflow run requires either `name` (a built-in or saved workflow) or `script` (inline).",
             ),
           )
         }

@@ -7,6 +7,7 @@ import { Config } from "@/config/config"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 import { MCP } from "../mcp"
 import { Skill } from "../skill"
+import { listSavedWorkflows } from "@/workflow/resolve"
 import PROMPT_INITIALIZE from "./template/initialize.txt"
 import PROMPT_REVIEW from "./template/review.txt"
 import { LegacyEvent } from "@opencode-ai/schema/legacy-event"
@@ -70,6 +71,26 @@ function deepResearchTemplate(): string {
     "",
     "The workflow runs in the background. After calling the tool, tell the user the workflow has started",
     'and they can check /workflows for progress. When the workflow completes, relay its result.',
+  ].join("\n")
+}
+
+// A saved workflow (from .opencode/workflows/ or .claude/workflows/) is exposed
+// as a slash command whose template steers the model to invoke it by `name`.
+// The workflow's description is included so the model can construct the correct
+// `args` from the user's input without guessing.
+function workflowCommandTemplate(name: string, description: string): string {
+  return [
+    `The user invoked the "${name}" workflow.`,
+    "",
+    description,
+    "",
+    "User input: $ARGUMENTS",
+    "",
+    `Call the workflow tool NOW to start the "${name}" workflow. Build the correct \`args\` JSON from the user input and the arguments described above, then call:`,
+    "",
+    `  workflow({ operation: "run", name: "${name}", args: <args JSON> })`,
+    "",
+    "Only ask the user a question if a required argument is missing. The workflow runs in the background; tell the user it has started and they can check /workflows for progress. When it completes, relay its result.",
   ].join("\n")
 }
 
@@ -183,6 +204,20 @@ export const layer = Layer.effect(
             return item.content
           },
           hints: [],
+        }
+      }
+
+      for (const wf of yield* Effect.promise(() => listSavedWorkflows(ctx.worktree))) {
+        if (commands[wf.name]) continue
+        commands[wf.name] = {
+          name: wf.name,
+          description: wf.description,
+          source: "command",
+          get template() {
+            return workflowCommandTemplate(wf.name, wf.description)
+          },
+          subtask: true,
+          hints: hints(workflowCommandTemplate(wf.name, wf.description)),
         }
       }
 

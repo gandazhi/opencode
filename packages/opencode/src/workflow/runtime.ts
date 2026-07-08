@@ -24,7 +24,7 @@ import type { SessionID } from "@/session/schema"
 import { parseMeta } from "./meta"
 import { evalScript, type HostFn } from "./sandbox"
 import { makeFileHooks, resolveInWorkspace } from "./workspace"
-import { isInlineScript, resolveWorkflowScript } from "./resolve"
+import { isInlineScript, resolveName } from "./resolve"
 import { WorkflowAgentEnded, WorkflowAgentFailed, WorkflowAgentStarted, WorkflowChildFailed, WorkflowFinished, WorkflowLog, WorkflowPhase, WorkflowProgress, WorkflowStarted } from "./events"
 import { WorkflowPersistence, journalKeyBase } from "./persistence"
 import type { AgentRecord, RunSummary, WorkflowTokens } from "./persistence"
@@ -802,7 +802,7 @@ export const layer = Layer.effect(
           Effect.gen(function* () {
             const childScript = isInlineScript(spec)
               ? spec
-              : yield* Effect.promise(() => resolveWorkflowScript(spec, workspaceRoot, instanceCtx?.worktree ?? ""))
+              : yield* Effect.promise(() => resolveName(spec, workspaceRoot, instanceCtx?.worktree ?? ""))
             if (childScript === null)
               return yield* Effect.die(new Error(`${WORKFLOW_STRUCTURAL_ERROR}: unknown workflow: ${JSON.stringify(spec)}`))
             // Nesting guards (T12) — LAUNCH path only (a journal HIT early-returned
