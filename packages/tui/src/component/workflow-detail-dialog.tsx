@@ -1,6 +1,7 @@
 /** @jsxImportSource @opentui/solid */
-import { InputRenderable, TextAttributes } from "@opentui/core"
-import { createMemo, createSignal, For, Show, onMount } from "solid-js"
+import { InputRenderable, ScrollBoxRenderable, TextAttributes } from "@opentui/core"
+import { createEffect, createMemo, createSignal, For, Show, onMount } from "solid-js"
+import { useTerminalDimensions } from "@opentui/solid"
 import * as fuzzysort from "fuzzysort"
 import { useSync, type WorkflowRun } from "../context/sync"
 import { useRoute } from "../context/route"
@@ -52,10 +53,14 @@ export function WorkflowDetailDialog() {
 
   const sessionID = createMemo(() => (route.data.type === "session" ? route.data.sessionID : undefined))
 
+  const dimensions = useTerminalDimensions()
+  const bodyHeight = createMemo(() => Math.max(6, Math.floor(dimensions().height * 0.6)))
+
   const [selected, setSelected] = createSignal(0)
   const [filter, setFilter] = createSignal("")
   const [filterMode, setFilterMode] = createSignal(false)
   let input: InputRenderable | undefined
+  let listScroll: ScrollBoxRenderable | undefined
 
   onMount(() => {
     dialog.setSize("xlarge")
@@ -93,6 +98,17 @@ export function WorkflowDetailDialog() {
     const run = selectedRun()
     if (!run) return []
     return derivePhaseStates({ phases: run.phases, currentPhase: run.currentPhase, status: run.status })
+  })
+
+  createEffect(() => {
+    const idx = selected()
+    const count = filtered().length
+    if (!listScroll || count === 0) return
+    const child = listScroll.getChildren()[idx]
+    if (!child) return
+    const y = child.y - listScroll.y
+    if (y >= listScroll.height) listScroll.scrollBy(y - listScroll.height + 1)
+    else if (y < 0) listScroll.scrollBy(y)
   })
 
   function move(delta: number) {
@@ -216,7 +232,12 @@ export function WorkflowDetailDialog() {
         }
       >
         <box flexGrow={1} flexDirection="row" paddingLeft={2} paddingRight={4} paddingTop={1}>
-          <box width="40%" flexDirection="column">
+          <scrollbox
+            width="40%"
+            maxHeight={bodyHeight()}
+            scrollbarOptions={{ visible: true }}
+            ref={(r: ScrollBoxRenderable) => (listScroll = r)}
+          >
             <For each={filtered()}>
               {(run, index) => {
                 const active = createMemo(() => index() === selected())
@@ -246,9 +267,9 @@ export function WorkflowDetailDialog() {
                 )
               }}
             </For>
-          </box>
+          </scrollbox>
 
-          <DetailPane run={selectedRun()} phases={phases()} />
+          <DetailPane run={selectedRun()} phases={phases()} maxHeight={bodyHeight()} />
         </box>
       </Show>
 
@@ -264,7 +285,11 @@ export function WorkflowDetailDialog() {
   )
 }
 
-function DetailPane(props: { run: WorkflowRun | undefined; phases: ReturnType<typeof derivePhaseStates> }) {
+function DetailPane(props: {
+  run: WorkflowRun | undefined
+  phases: ReturnType<typeof derivePhaseStates>
+  maxHeight: number
+}) {
   const { theme } = useTheme()
   const run = () => props.run
   const counters = () => {
@@ -286,7 +311,7 @@ function DetailPane(props: { run: WorkflowRun | undefined; phases: ReturnType<ty
         </box>
       }
     >
-      <box flexGrow={1} flexDirection="column" border borderStyle="single" paddingLeft={1} paddingRight={1}>
+      <scrollbox flexGrow={1} maxHeight={props.maxHeight} scrollbarOptions={{ visible: true }} paddingLeft={1} paddingRight={1}>
         <box flexDirection="row">
           <text fg={theme[STATUS_COLOR[run()!.status]]} flexShrink={0}>
             {STATUS_GLYPH[run()!.status]}{" "}
@@ -356,7 +381,7 @@ function DetailPane(props: { run: WorkflowRun | undefined; phases: ReturnType<ty
             </text>
           </box>
         </Show>
-      </box>
+      </scrollbox>
     </Show>
   )
 }
