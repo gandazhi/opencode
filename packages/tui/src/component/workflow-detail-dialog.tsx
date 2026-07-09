@@ -79,7 +79,10 @@ export function WorkflowDetailDialog() {
     return (((next % count) + count) % count)
   }
 
-  const selectedRun = createMemo(() => filtered()[selected()] as WorkflowRun | undefined)
+  const selectedRun = createMemo(() => {
+    const list = filtered()
+    return list[Math.min(selected(), Math.max(0, list.length - 1))] as WorkflowRun | undefined
+  })
 
   const phases = createMemo(() => {
     const run = selectedRun()
@@ -106,6 +109,7 @@ export function WorkflowDetailDialog() {
   async function tryCancel() {
     const run = selectedRun()
     if (!run) return
+    if (run.status !== "running") return
     await sync.workflow.cancel(run.runID)
     toast.show({ message: "Workflow cancelled", variant: "info" })
   }
@@ -113,6 +117,7 @@ export function WorkflowDetailDialog() {
   async function tryDelete() {
     const run = selectedRun()
     if (!run) return
+    if (run.status === "running") return
     const confirmed = await DialogConfirm.show(dialog, "Delete workflow", "Permanently delete this run?", "delete")
     if (confirmed) {
       await sync.workflow.remove(run.runID)
@@ -123,6 +128,7 @@ export function WorkflowDetailDialog() {
   async function tryResume() {
     const run = selectedRun()
     if (!run) return
+    if (run.status === "running") return
     await sync.workflow.resume(run.runID)
     toast.show({ message: "Workflow resumed", variant: "info" })
   }
