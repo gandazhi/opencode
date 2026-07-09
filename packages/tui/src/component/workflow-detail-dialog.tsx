@@ -10,6 +10,7 @@ import { useToast } from "../ui/toast"
 import { useTheme } from "../context/theme"
 import { useBindings } from "../keymap"
 import { derivePhaseStates, type PhaseState } from "../util/workflow-phases"
+import { descendantSessionIDs } from "../routes/session/sidebar-workflows"
 
 const STATUS_GLYPH: Record<WorkflowRun["status"], string> = {
   running: "●",
@@ -49,6 +50,8 @@ export function WorkflowDetailDialog() {
   const toast = useToast()
   const { theme } = useTheme()
 
+  const sessionID = createMemo(() => (route.data.type === "session" ? route.data.sessionID : undefined))
+
   const [selected, setSelected] = createSignal(0)
   const [filter, setFilter] = createSignal("")
   const [filterMode, setFilterMode] = createSignal(false)
@@ -59,9 +62,13 @@ export function WorkflowDetailDialog() {
     void sync.workflow.load()
   })
 
-  const sorted = createMemo(() =>
-    Object.values(sync.data.workflow).toSorted((a, b) => b.runID.localeCompare(a.runID)),
-  )
+  const sorted = createMemo(() => {
+    const all = Object.values(sync.data.workflow)
+    const sid = sessionID()
+    if (!sid) return all.toSorted((a, b) => b.runID.localeCompare(a.runID))
+    const reachable = descendantSessionIDs(sync.data.session, sid)
+    return all.filter((run) => reachable.has(run.sessionID)).toSorted((a, b) => b.runID.localeCompare(a.runID))
+  })
 
   const filtered = createMemo(() => {
     const needle = filter().trim()

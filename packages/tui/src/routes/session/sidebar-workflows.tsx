@@ -76,7 +76,7 @@ export function SidebarWorkflows(props: { sessionID: string }) {
   )
 }
 
-function descendantSessionIDs(sessions: Session[], root: string): Set<string> {
+export function descendantSessionIDs(sessions: Session[], root: string): Set<string> {
   const byParent = new Map<string, string[]>()
   for (const session of sessions) {
     if (!session.parentID) continue
