@@ -18,6 +18,10 @@ export const WorkflowRunSummary = Schema.Struct({
   succeeded: Schema.Number,
   failed: Schema.Number,
   currentPhase: Schema.optional(Schema.String),
+  args: Schema.optional(Schema.Unknown),
+  phases: Schema.optional(
+    Schema.Array(Schema.Struct({ title: Schema.String, detail: Schema.optional(Schema.String) })),
+  ),
   error: Schema.optional(Schema.String),
   createdAt: Schema.Number,
   updatedAt: Schema.Number,
