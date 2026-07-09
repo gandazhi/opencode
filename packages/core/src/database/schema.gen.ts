@@ -248,6 +248,7 @@ export default {
           \`current_phase\` text,
           \`parent_actor_id\` text,
           \`args\` text,
+          \`phases\` text,
           \`script_sha\` text,
           \`agent_timeout_ms\` integer,
           \`error\` text,
