@@ -426,6 +426,7 @@ export const layer = Layer.effect(
         name,
         parentActorID: input.parentActorID,
         args: input.args,
+        phases: parsed.ok ? parsed.meta.phases : undefined,
         scriptSha,
         agentTimeoutMs: input.agentTimeoutMs,
       }).pipe(Effect.ignore)

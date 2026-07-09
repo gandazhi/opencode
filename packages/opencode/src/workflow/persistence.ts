@@ -93,6 +93,7 @@ export type RunSummary = {
   succeeded: number
   failed: number
   currentPhase?: string
+  phases?: { title: string; detail?: string }[]
   parentActorID?: string
   args?: unknown
   scriptSha?: string
@@ -122,6 +123,7 @@ function toSummary(row: typeof WorkflowRunTable.$inferSelect): RunSummary {
     succeeded: row.succeeded,
     failed: row.failed,
     ...(row.current_phase ? { currentPhase: row.current_phase } : {}),
+    ...(row.phases ? { phases: row.phases as { title: string; detail?: string }[] } : {}),
     ...(row.parent_actor_id ? { parentActorID: row.parent_actor_id } : {}),
     ...(row.args !== null && row.args !== undefined ? { args: row.args } : {}),
     ...(row.script_sha ? { scriptSha: row.script_sha } : {}),
@@ -138,6 +140,7 @@ const recordStart = (input: {
   name: string
   parentActorID?: string
   args?: unknown
+  phases?: { title: string; detail?: string }[]
   scriptSha?: string
   agentTimeoutMs?: number
 }) =>
@@ -155,6 +158,7 @@ const recordStart = (input: {
         failed: 0,
         parent_actor_id: input.parentActorID ?? null,
         args: input.args ?? null,
+        phases: input.phases ?? null,
         script_sha: input.scriptSha ?? null,
         agent_timeout_ms: input.agentTimeoutMs ?? null,
       })
