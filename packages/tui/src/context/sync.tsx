@@ -70,11 +70,15 @@ export type WorkflowRun = {
   succeeded: number
   failed: number
   currentPhase?: string
+  phases?: { title: string; detail?: string }[]
+  args?: unknown
   error?: string
   logs: string[]
   agents: WorkflowAgent[]
   agentCount: number
   parentActorID?: string
+  createdAt?: number
+  updatedAt?: number
 }
 
 function search<T>(items: T[], target: string, key: (item: T) => string) {
