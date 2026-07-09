@@ -255,6 +255,10 @@ export const {
           logs: prev?.logs ?? [],
           agents: prev?.agents ?? [],
           agentCount: prev?.agentCount ?? 0,
+          phases: prev?.phases,
+          args: prev?.args,
+          createdAt: prev?.createdAt,
+          updatedAt: prev?.updatedAt,
         }))
         return
       }
