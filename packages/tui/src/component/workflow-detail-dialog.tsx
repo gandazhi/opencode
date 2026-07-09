@@ -49,8 +49,6 @@ export function WorkflowDetailDialog() {
   const toast = useToast()
   const { theme } = useTheme()
 
-  const sessionID = createMemo(() => (route.data.type === "session" ? route.data.sessionID : undefined))
-
   const [selected, setSelected] = createSignal(0)
   const [filter, setFilter] = createSignal("")
   const [filterMode, setFilterMode] = createSignal(false)
@@ -58,7 +56,7 @@ export function WorkflowDetailDialog() {
 
   onMount(() => {
     dialog.setSize("xlarge")
-    void sync.workflow.load(sessionID())
+    void sync.workflow.load()
   })
 
   const sorted = createMemo(() =>
